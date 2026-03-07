@@ -164,6 +164,44 @@ func (h *EmployeeHandler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, responseDTO)
 }
 
+func (h *EmployeeHandler) ToggleActive(c *gin.Context) {
+	partnerID := middleware.GetPartnerID(c)
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "ID deve ser um número válido",
+		})
+		return
+	}
+
+	var req dto.ToggleActiveRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid request body",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	if err := h.employeeService.ToggleActive(c.Request.Context(), partnerID, id, req.Active); err != nil {
+		if err.Error() == "sql: no rows in result set" {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "Employee não encontrado",
+			})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Status do employee atualizado com sucesso",
+		"active":  req.Active,
+	})
+}
+
 func (h *EmployeeHandler) Delete(c *gin.Context) {
 	tenantID := middleware.GetPartnerID(c)
 	idStr := c.Param("id")
@@ -194,6 +232,38 @@ func (h *EmployeeHandler) Delete(c *gin.Context) {
 		"message": "Employee deletada com sucesso",
 		"data":    h.toEmployeeResponse(deletedEmployee),
 	})
+}
+
+func (h *EmployeeHandler) ListDeleted(c *gin.Context) {
+	tenantID := middleware.GetPartnerID(c)
+	limitStr := c.DefaultQuery("limit", "20")
+	offsetStr := c.DefaultQuery("offset", "0")
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		limit = 20
+	}
+
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil {
+		offset = 0
+	}
+
+	employees, err := h.employeeService.ListDeleted(c.Request.Context(), tenantID, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Erro ao listar employees",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	var responses []dto.EmployeeResponse
+	for _, employee := range employees {
+		responses = append(responses, h.toEmployeeResponse(employee))
+	}
+
+	c.JSON(http.StatusOK, responses)
 }
 
 func (h *EmployeeHandler) toEmployeeResponse(employee *domain.Employee) dto.EmployeeResponse {

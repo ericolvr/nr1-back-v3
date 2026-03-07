@@ -26,8 +26,10 @@ type EmployeeRepository interface {
 	List(ctx context.Context, partnerID int64, limit, offset int64) ([]*Employee, error)
 	ListByCompany(ctx context.Context, partnerID, companyID int64, limit, offset int64) ([]*Employee, error)
 	ListByDepartment(ctx context.Context, partnerID, departmentID int64, limit, offset int64) ([]*Employee, error)
+	ListDeleted(ctx context.Context, partnerID int64, limit, offset int64) ([]*Employee, error)
 	GetByID(ctx context.Context, partnerID, id int64) (*Employee, error)
 	Update(ctx context.Context, employee *Employee) error
+	ToggleActive(ctx context.Context, partnerID, id int64, active bool) error
 	Delete(ctx context.Context, partnerID, id int64) error
 }
 

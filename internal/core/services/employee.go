@@ -66,6 +66,22 @@ func (s *EmployeeService) Update(ctx context.Context, employee *domain.Employee)
 	return s.employeeRepo.Update(ctx, employee)
 }
 
+func (s *EmployeeService) ToggleActive(ctx context.Context, partnerID, id int64, active bool) error {
+	if id <= 0 {
+		return errors.New("id is required")
+	}
+
+	_, err := s.employeeRepo.GetByID(ctx, partnerID, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return errors.New("employee not found")
+		}
+		return err
+	}
+
+	return s.employeeRepo.ToggleActive(ctx, partnerID, id, active)
+}
+
 func (s *EmployeeService) Delete(ctx context.Context, partnerID, id int64) (*domain.Employee, error) {
 	if id <= 0 {
 		return nil, errors.New("id is required")
@@ -83,4 +99,14 @@ func (s *EmployeeService) Delete(ctx context.Context, partnerID, id int64) (*dom
 		return nil, err
 	}
 	return employee, nil
+}
+
+func (s *EmployeeService) ListDeleted(ctx context.Context, partnerID int64, limit, offset int) ([]*domain.Employee, error) {
+	if limit <= 20 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return s.employeeRepo.ListDeleted(ctx, partnerID, int64(limit), int64(offset))
 }

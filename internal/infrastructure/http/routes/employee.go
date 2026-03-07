@@ -23,8 +23,10 @@ func (er *EmployeeRoutes) SetupRoutes(v1 *gin.RouterGroup) {
 	{
 		employees.POST("", er.employeeHandler.Create)
 		employees.GET("", er.employeeHandler.List)
+		employees.GET("/deleted", er.employeeHandler.ListDeleted)
 		employees.GET("/:id", er.employeeHandler.GetByID)
 		employees.PATCH("/:id", er.employeeHandler.Update)
 		employees.DELETE("/:id", er.employeeHandler.Delete)
+		employees.PATCH("/:id/toggle-active", er.employeeHandler.ToggleActive)
 	}
 }

@@ -58,7 +58,7 @@ func (r *EmployeeRepository) List(ctx context.Context, tenantID, limit, offset i
 			d.created_at
 		FROM employees e
 		INNER JOIN departments d ON e.department_id = d.id AND e.partner_id = d.partner_id
-		WHERE e.partner_id = $1
+		WHERE e.partner_id = $1 AND e.active = true
 		ORDER BY e.name ASC
 		LIMIT $2 OFFSET $3`
 
@@ -237,10 +237,79 @@ func (r *EmployeeRepository) Update(ctx context.Context, employee *domain.Employ
 	return err
 }
 
+func (r *EmployeeRepository) ToggleActive(ctx context.Context, partnerID, id int64, active bool) error {
+	query := `
+		UPDATE employees
+		SET active = $1
+		WHERE partner_id = $2 AND id = $3
+	`
+	_, err := r.db.ExecContext(ctx, query, active, partnerID, id)
+	return err
+}
+
 func (r *EmployeeRepository) Delete(ctx context.Context, tenantID, id int64) error {
 	query := `DELETE FROM employees WHERE partner_id = $1 AND id = $2`
 	_, err := r.db.ExecContext(ctx, query, tenantID, id)
 	return err
+}
+
+func (r *EmployeeRepository) ListDeleted(ctx context.Context, partnerID int64, limit, offset int64) ([]*domain.Employee, error) {
+	query := `
+		SELECT 
+			e.id, 
+			e.partner_id, 
+			e.company_id, 
+			e.department_id, 
+			e.name, 
+			e.email, 
+			e.mobile, 
+			e.active, 
+			e.created_at,
+			d.id,
+			d.name,
+			d.created_at
+		FROM employees e
+		INNER JOIN departments d ON e.department_id = d.id AND e.partner_id = d.partner_id
+		WHERE e.partner_id = $1 AND e.active = false
+		ORDER BY e.name ASC
+		LIMIT $2 OFFSET $3`
+
+	rows, err := r.db.QueryContext(ctx, query, partnerID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var employees []*domain.Employee
+
+	for rows.Next() {
+		var e domain.Employee
+		var d domain.Department
+
+		err := rows.Scan(
+			&e.ID,
+			&e.PartnerID,
+			&e.CompanyID,
+			&e.DepartmentID,
+			&e.Name,
+			&e.Email,
+			&e.Mobile,
+			&e.Active,
+			&e.CreatedAt,
+			&d.ID,
+			&d.Name,
+			&d.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		d.PartnerID = e.PartnerID
+		e.Department = &d
+
+		employees = append(employees, &e)
+	}
+	return employees, nil
 }
 
 func (r *EmployeeRepository) ListByCompany(ctx context.Context, partnerID, companyID, limit, offset int64) ([]*domain.Employee, error) {
