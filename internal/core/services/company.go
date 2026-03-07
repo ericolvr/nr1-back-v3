@@ -77,3 +77,26 @@ func (s *CompanyService) Delete(ctx context.Context, partnerID, id int64) error 
 
 	return s.companyRepo.Delete(ctx, partnerID, id)
 }
+
+func (s *CompanyService) ToggleActive(ctx context.Context, partnerID, id int64, active bool) error {
+	if partnerID <= 0 || id <= 0 {
+		return errors.New("invalid IDs")
+	}
+
+	return s.companyRepo.ToggleActive(ctx, partnerID, id, active)
+}
+
+func (s *CompanyService) ListAllWithDeleted(ctx context.Context, partnerID int64, limit, offset int64) ([]*domain.Company, error) {
+	if partnerID <= 0 {
+		return nil, errors.New("invalid partner ID")
+	}
+
+	if limit <= 0 {
+		limit = 10
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	return s.companyRepo.ListAllWithDeleted(ctx, partnerID, limit, offset)
+}

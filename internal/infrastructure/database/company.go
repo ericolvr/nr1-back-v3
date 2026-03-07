@@ -30,7 +30,7 @@ func (r *CompanyRepository) List(ctx context.Context, partnerID int64, limit, of
 	query := `
 		SELECT id, partner_id, name, cnpj, email, mobile, active, created_at, updated_at
 		FROM companies
-		WHERE partner_id = $1
+		WHERE partner_id = $1 AND active = true
 		ORDER BY name ASC
 		LIMIT $2 OFFSET $3
 	`
@@ -56,7 +56,7 @@ func (r *CompanyRepository) GetByID(ctx context.Context, partnerID, id int64) (*
 	query := `
 		SELECT id, partner_id, name, cnpj, email, mobile, active, created_at, updated_at
 		FROM companies
-		WHERE partner_id = $1 AND id = $2
+		WHERE partner_id = $1 AND id = $2 AND active = true
 	`
 	var c domain.Company
 	err := r.db.QueryRowContext(ctx, query, partnerID, id).Scan(&c.ID, &c.PartnerID, &c.Name, &c.CNPJ, &c.Email, &c.Mobile, &c.Active, &c.CreatedAt, &c.UpdatedAt)
@@ -82,4 +82,58 @@ func (r *CompanyRepository) Delete(ctx context.Context, partnerID, id int64) err
 	query := `DELETE FROM companies WHERE partner_id = $1 AND id = $2`
 	_, err := r.db.ExecContext(ctx, query, partnerID, id)
 	return err
+}
+
+func (r *CompanyRepository) ToggleActive(ctx context.Context, partnerID, id int64, active bool) error {
+	query := `
+		UPDATE companies
+		SET active = $1, updated_at = CURRENT_TIMESTAMP
+		WHERE partner_id = $2 AND id = $3
+	`
+	// Debug log
+	println("DEBUG SQL ToggleActive: active=", active, "partnerID=", partnerID, "id=", id)
+
+	result, err := r.db.ExecContext(ctx, query, active, partnerID, id)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	println("DEBUG SQL ToggleActive: rowsAffected=", rowsAffected)
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+func (r *CompanyRepository) ListAllWithDeleted(ctx context.Context, partnerID int64, limit, offset int64) ([]*domain.Company, error) {
+	query := `
+		SELECT id, partner_id, name, cnpj, email, mobile, active, created_at, updated_at
+		FROM companies
+		WHERE partner_id = $1
+		ORDER BY name ASC
+		LIMIT $2 OFFSET $3
+	`
+	rows, err := r.db.QueryContext(ctx, query, partnerID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var companies []*domain.Company
+	for rows.Next() {
+		var c domain.Company
+		err := rows.Scan(&c.ID, &c.PartnerID, &c.Name, &c.CNPJ, &c.Email, &c.Mobile, &c.Active, &c.CreatedAt, &c.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		companies = append(companies, &c)
+	}
+	return companies, nil
 }

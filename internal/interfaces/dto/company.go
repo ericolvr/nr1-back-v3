@@ -17,3 +17,7 @@ type CompanyResponse struct {
 	Active    bool   `json:"active"`
 	CreatedAt string `json:"created_at"`
 }
+
+type ToggleActiveRequest struct {
+	Active bool `json:"active"`
+}

@@ -22,8 +22,10 @@ func (r *CompanyRoutes) SetupRoutes(v1 *gin.RouterGroup) {
 	{
 		companies.POST("", r.companyHandler.Create)
 		companies.GET("", r.companyHandler.List)
+		companies.GET("/all-with-deleted", r.companyHandler.ListAllWithDeleted)
 		companies.GET("/:id", r.companyHandler.GetByID)
 		companies.PUT("/:id", r.companyHandler.Update)
 		companies.DELETE("/:id", r.companyHandler.Delete)
+		companies.PATCH("/:id/toggle-active", r.companyHandler.ToggleActive)
 	}
 }

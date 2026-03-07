@@ -183,6 +183,74 @@ func (h *CompanyHandler) Delete(c *gin.Context) {
 	})
 }
 
+func (h *CompanyHandler) ToggleActive(c *gin.Context) {
+	partnerID := c.GetInt64("partner_id")
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "ID deve ser um número válido",
+		})
+		return
+	}
+
+	var req dto.ToggleActiveRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid request body",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Debug log
+	println("DEBUG ToggleActive: partnerID=", partnerID, "id=", id, "active=", req.Active)
+
+	if err := h.companyService.ToggleActive(c.Request.Context(), partnerID, id, req.Active); err != nil {
+		if err.Error() == "sql: no rows in result set" {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "Company não encontrada",
+			})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	message := "Company desativada com sucesso"
+	if req.Active {
+		message = "Company reativada com sucesso"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": message,
+	})
+}
+
+func (h *CompanyHandler) ListAllWithDeleted(c *gin.Context) {
+	partnerID := c.GetInt64("partner_id")
+
+	limit, _ := strconv.ParseInt(c.DefaultQuery("limit", "100"), 10, 64)
+	offset, _ := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+
+	companies, err := h.companyService.ListAllWithDeleted(c.Request.Context(), partnerID, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Erro ao listar companies",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	var responses []dto.CompanyResponse
+	for _, company := range companies {
+		responses = append(responses, h.toCompanyResponse(company))
+	}
+
+	c.JSON(http.StatusOK, responses)
+}
+
 func (h *CompanyHandler) toCompanyResponse(company *domain.Company) dto.CompanyResponse {
 	return dto.CompanyResponse{
 		ID:        int(company.ID),
