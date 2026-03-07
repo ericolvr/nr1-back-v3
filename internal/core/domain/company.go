@@ -23,7 +23,7 @@ type Company struct {
 type CompanyRepository interface {
 	Create(ctx context.Context, company *Company) error
 	List(ctx context.Context, partnerID int64, limit, offset int64) ([]*Company, error)
-	ListAllWithDeleted(ctx context.Context, partnerID int64, limit, offset int64) ([]*Company, error)
+	ListDeleted(ctx context.Context, partnerID int64, limit, offset int64) ([]*Company, error)
 	GetByID(ctx context.Context, partnerID, id int64) (*Company, error)
 	Update(ctx context.Context, company *Company) error
 	Delete(ctx context.Context, partnerID, id int64) error

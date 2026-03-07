@@ -58,7 +58,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 	}
 
 	user := &domain.User{
-		PartnerID:  tenantID,
+		PartnerID: tenantID,
 		Name:      dto.Name,
 		Mobile:    dto.Mobile,
 		Password:  hashedPassword,
@@ -162,12 +162,12 @@ func (h *UserHandler) Update(c *gin.Context) {
 	}
 
 	user := &domain.User{
-		ID:       idInt,
+		ID:        idInt,
 		PartnerID: tenantID,
-		Name:     updateDTO.Name,
-		Mobile:   updateDTO.Mobile,
-		Type:     updateDTO.Type,
-		Active:   updateDTO.Active,
+		Name:      updateDTO.Name,
+		Mobile:    updateDTO.Mobile,
+		Type:      updateDTO.Type,
+		Active:    updateDTO.Active,
 	}
 
 	if err := h.userService.Update(c.Request.Context(), user); err != nil {
@@ -273,10 +273,84 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 	})
 }
 
+func (h *UserHandler) ToggleActive(c *gin.Context) {
+	partnerID := middleware.GetPartnerID(c)
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "ID deve ser um número válido",
+		})
+		return
+	}
+
+	var req dto.ToggleActiveRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid request body",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	if err := h.userService.ToggleActive(c.Request.Context(), partnerID, id, req.Active); err != nil {
+		if err.Error() == "sql: no rows in result set" {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "Usuário não encontrado",
+			})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	message := "Usuário desativado com sucesso"
+	if req.Active {
+		message = "Usuário reativado com sucesso"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": message,
+	})
+}
+
+func (h *UserHandler) ListDeleted(c *gin.Context) {
+	tenantID := middleware.GetPartnerID(c)
+	limitStr := c.DefaultQuery("limit", "20")
+	offsetStr := c.DefaultQuery("offset", "0")
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		limit = 20
+	}
+
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil {
+		offset = 0
+	}
+
+	users, err := h.userService.ListDeleted(c.Request.Context(), tenantID, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Erro ao listar usuários",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	var responses []dto.UserResponse
+	for _, user := range users {
+		responses = append(responses, h.toUserResponse(user))
+	}
+
+	c.JSON(http.StatusOK, responses)
+}
+
 func (h *UserHandler) toUserResponse(user *domain.User) dto.UserResponse {
 	return dto.UserResponse{
 		ID:        int(user.ID),
-		PartnerID:  int(user.PartnerID),
+		PartnerID: int(user.PartnerID),
 		Name:      user.Name,
 		Mobile:    user.Mobile,
 		Type:      user.Type,

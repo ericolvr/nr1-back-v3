@@ -90,9 +90,6 @@ func (r *CompanyRepository) ToggleActive(ctx context.Context, partnerID, id int6
 		SET active = $1, updated_at = CURRENT_TIMESTAMP
 		WHERE partner_id = $2 AND id = $3
 	`
-	// Debug log
-	println("DEBUG SQL ToggleActive: active=", active, "partnerID=", partnerID, "id=", id)
-
 	result, err := r.db.ExecContext(ctx, query, active, partnerID, id)
 	if err != nil {
 		return err
@@ -103,8 +100,6 @@ func (r *CompanyRepository) ToggleActive(ctx context.Context, partnerID, id int6
 		return err
 	}
 
-	println("DEBUG SQL ToggleActive: rowsAffected=", rowsAffected)
-
 	if rowsAffected == 0 {
 		return sql.ErrNoRows
 	}
@@ -112,11 +107,11 @@ func (r *CompanyRepository) ToggleActive(ctx context.Context, partnerID, id int6
 	return nil
 }
 
-func (r *CompanyRepository) ListAllWithDeleted(ctx context.Context, partnerID int64, limit, offset int64) ([]*domain.Company, error) {
+func (r *CompanyRepository) ListDeleted(ctx context.Context, partnerID int64, limit, offset int64) ([]*domain.Company, error) {
 	query := `
 		SELECT id, partner_id, name, cnpj, email, mobile, active, created_at, updated_at
 		FROM companies
-		WHERE partner_id = $1
+		WHERE partner_id = $1 AND active = false
 		ORDER BY name ASC
 		LIMIT $2 OFFSET $3
 	`

@@ -202,9 +202,6 @@ func (h *CompanyHandler) ToggleActive(c *gin.Context) {
 		return
 	}
 
-	// Debug log
-	println("DEBUG ToggleActive: partnerID=", partnerID, "id=", id, "active=", req.Active)
-
 	if err := h.companyService.ToggleActive(c.Request.Context(), partnerID, id, req.Active); err != nil {
 		if err.Error() == "sql: no rows in result set" {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -228,13 +225,13 @@ func (h *CompanyHandler) ToggleActive(c *gin.Context) {
 	})
 }
 
-func (h *CompanyHandler) ListAllWithDeleted(c *gin.Context) {
+func (h *CompanyHandler) ListDeleted(c *gin.Context) {
 	partnerID := c.GetInt64("partner_id")
 
 	limit, _ := strconv.ParseInt(c.DefaultQuery("limit", "100"), 10, 64)
 	offset, _ := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
 
-	companies, err := h.companyService.ListAllWithDeleted(c.Request.Context(), partnerID, limit, offset)
+	companies, err := h.companyService.ListDeleted(c.Request.Context(), partnerID, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Erro ao listar companies",

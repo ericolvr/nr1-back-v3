@@ -23,9 +23,11 @@ func (ur *UserRoutes) SetupRoutes(v1 *gin.RouterGroup) {
 	{
 		users.POST("", ur.userHandler.Create)
 		users.GET("", ur.userHandler.List)
+		users.GET("/deleted", ur.userHandler.ListDeleted)
 		users.GET("/:id", ur.userHandler.GetByID)
 		users.PATCH("/:id", ur.userHandler.Update)
 		users.DELETE("/:id", ur.userHandler.Delete)
+		users.PATCH("/:id/toggle-active", ur.userHandler.ToggleActive)
 		users.POST("/:id/reset-password", ur.userHandler.ResetPassword)
 	}
 }

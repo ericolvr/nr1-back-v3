@@ -42,7 +42,7 @@ func (r *UserRepository) List(ctx context.Context, tenantID int64, limit, offset
 	query := `
 		SELECT id, partner_id, name, mobile, type, active, created_at 
 		FROM users 
-		WHERE partner_id = $1
+		WHERE partner_id = $1 AND active = true
 		ORDER BY name ASC
 		LIMIT $2 OFFSET $3`
 
@@ -77,7 +77,7 @@ func (r *UserRepository) GetByID(ctx context.Context, tenantID, id int64) (*doma
 	query := `
 		SELECT id, partner_id, name, mobile, type, active, created_at 
 		FROM users 
-		WHERE partner_id = $1 AND id = $2`
+		WHERE partner_id = $1 AND id = $2 AND active = true`
 
 	var u domain.User
 	err := r.db.QueryRowContext(
@@ -178,4 +178,62 @@ func (r *UserRepository) Delete(ctx context.Context, tenantID, id int64) error {
 	query := `DELETE FROM users WHERE partner_id = $1 AND id = $2`
 	_, err := r.db.ExecContext(ctx, query, tenantID, id)
 	return err
+}
+
+func (r *UserRepository) ToggleActive(ctx context.Context, partnerID, id int64, active bool) error {
+	query := `
+		UPDATE users
+		SET active = $1, updated_at = CURRENT_TIMESTAMP
+		WHERE partner_id = $2 AND id = $3
+	`
+	result, err := r.db.ExecContext(ctx, query, active, partnerID, id)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+func (r *UserRepository) ListDeleted(ctx context.Context, tenantID int64, limit, offset int64) ([]*domain.User, error) {
+	query := `
+		SELECT id, partner_id, name, mobile, type, active, created_at 
+		FROM users 
+		WHERE partner_id = $1 AND active = false
+		ORDER BY name ASC
+		LIMIT $2 OFFSET $3`
+
+	rows, err := r.db.QueryContext(ctx, query, tenantID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*domain.User
+
+	for rows.Next() {
+		var u domain.User
+		err := rows.Scan(
+			&u.ID,
+			&u.PartnerID,
+			&u.Name,
+			&u.Mobile,
+			&u.Type,
+			&u.Active,
+			&u.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, &u)
+	}
+	return users, nil
 }

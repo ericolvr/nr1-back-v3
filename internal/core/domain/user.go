@@ -21,11 +21,13 @@ type User struct {
 type UserRepository interface {
 	Create(ctx context.Context, user *User) error
 	List(ctx context.Context, partnerID int64, limit, offset int64) ([]*User, error)
+	ListDeleted(ctx context.Context, partnerID int64, limit, offset int64) ([]*User, error)
 	GetByID(ctx context.Context, partnerID, id int64) (*User, error)
 	GetByMobile(ctx context.Context, partnerID int64, mobile string) (*User, error)
 	GetByMobileGlobal(ctx context.Context, mobile string) (*User, error)
 	Update(ctx context.Context, partnerID int64, user *User) error
 	Delete(ctx context.Context, partnerID, id int64) error
+	ToggleActive(ctx context.Context, partnerID, id int64, active bool) error
 }
 
 type UserCreatedHook interface {

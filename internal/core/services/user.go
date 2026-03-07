@@ -169,3 +169,21 @@ func (s *UserService) Delete(ctx context.Context, partnerID, id int64) (*domain.
 	}
 	return user, nil
 }
+
+func (s *UserService) ToggleActive(ctx context.Context, partnerID, id int64, active bool) error {
+	if partnerID <= 0 || id <= 0 {
+		return errors.New("invalid IDs")
+	}
+
+	return s.userRepo.ToggleActive(ctx, partnerID, id, active)
+}
+
+func (s *UserService) ListDeleted(ctx context.Context, partnerID int64, limit, offset int) ([]*domain.User, error) {
+	if limit <= 20 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return s.userRepo.ListDeleted(ctx, partnerID, int64(limit), int64(offset))
+}

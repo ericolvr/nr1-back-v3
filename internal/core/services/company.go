@@ -86,7 +86,7 @@ func (s *CompanyService) ToggleActive(ctx context.Context, partnerID, id int64, 
 	return s.companyRepo.ToggleActive(ctx, partnerID, id, active)
 }
 
-func (s *CompanyService) ListAllWithDeleted(ctx context.Context, partnerID int64, limit, offset int64) ([]*domain.Company, error) {
+func (s *CompanyService) ListDeleted(ctx context.Context, partnerID int64, limit, offset int64) ([]*domain.Company, error) {
 	if partnerID <= 0 {
 		return nil, errors.New("invalid partner ID")
 	}
@@ -98,5 +98,5 @@ func (s *CompanyService) ListAllWithDeleted(ctx context.Context, partnerID int64
 		limit = 100
 	}
 
-	return s.companyRepo.ListAllWithDeleted(ctx, partnerID, limit, offset)
+	return s.companyRepo.ListDeleted(ctx, partnerID, limit, offset)
 }
