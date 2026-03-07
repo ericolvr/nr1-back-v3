@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: nr1-postgres
+    container_name: nr1-postgres_version2
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME}

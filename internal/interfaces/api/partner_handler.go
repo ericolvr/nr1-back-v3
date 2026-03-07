@@ -6,6 +6,7 @@ import (
 
 	"github.com/ericolvr/sec-back-v2/internal/core/domain"
 	"github.com/ericolvr/sec-back-v2/internal/core/services"
+	"github.com/ericolvr/sec-back-v2/internal/interfaces/dto"
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,30 +21,34 @@ func NewPartnerHandler(partnerService *services.PartnerService) *PartnerHandler 
 }
 
 func (h *PartnerHandler) Create(c *gin.Context) {
-	var req struct {
-		Name  string `json:"name" binding:"required"`
-		Email string `json:"email"`
-		Phone string `json:"phone"`
-	}
+	var req dto.PartnerRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid request body",
+			"details": err.Error(),
+		})
 		return
 	}
 
 	partner := &domain.Partner{
 		Name:   req.Name,
+		CNPJ:   req.CNPJ,
 		Email:  req.Email,
-		Mobile: req.Phone,
+		Mobile: req.Mobile,
 		Active: true,
 	}
 
 	if err := h.partnerService.Create(c.Request.Context(), partner); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Erro ao criar partner",
+			"details": err.Error(),
+		})
 		return
 	}
 
-	c.JSON(http.StatusCreated, partner)
+	response := h.toPartnerResponse(partner)
+	c.JSON(http.StatusCreated, response)
 }
 
 func (h *PartnerHandler) List(c *gin.Context) {
@@ -52,82 +57,131 @@ func (h *PartnerHandler) List(c *gin.Context) {
 
 	partners, err := h.partnerService.List(c.Request.Context(), limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Erro ao listar partners",
+			"details": err.Error(),
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, partners)
+	var responses []dto.PartnerResponse
+	for _, partner := range partners {
+		responses = append(responses, h.toPartnerResponse(partner))
+	}
+
+	c.JSON(http.StatusOK, responses)
 }
 
 func (h *PartnerHandler) GetByID(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "ID deve ser um número válido",
+		})
 		return
 	}
 
 	partner, err := h.partnerService.GetByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Partner not found"})
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":   "Partner não encontrado",
+			"details": err.Error(),
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, partner)
+	response := h.toPartnerResponse(partner)
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *PartnerHandler) Update(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "ID deve ser um número válido",
+		})
 		return
 	}
 
-	var req struct {
-		Name  *string `json:"name"`
-		Email *string `json:"email"`
-		Phone *string `json:"phone"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var updateDTO dto.PartnerRequest
+	if err := c.ShouldBindJSON(&updateDTO); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Dados inválidos",
+			"details": err.Error(),
+		})
 		return
 	}
 
-	partner, err := h.partnerService.GetByID(c.Request.Context(), id)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Partner not found"})
-		return
-	}
-
-	if req.Name != nil {
-		partner.Name = *req.Name
-	}
-	if req.Email != nil {
-		partner.Email = *req.Email
-	}
-	if req.Phone != nil {
-		partner.Mobile = *req.Phone
+	partner := &domain.Partner{
+		ID:     id,
+		Name:   updateDTO.Name,
+		CNPJ:   updateDTO.CNPJ,
+		Email:  updateDTO.Email,
+		Mobile: updateDTO.Mobile,
+		Active: updateDTO.Active,
 	}
 
 	if err := h.partnerService.Update(c.Request.Context(), partner); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if err.Error() == "partner not found" {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "Partner não encontrado",
+			})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, partner)
+	responseDTO := h.toPartnerResponse(partner)
+	c.JSON(http.StatusOK, responseDTO)
 }
 
 func (h *PartnerHandler) Delete(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "ID deve ser um número válido",
+		})
+		return
+	}
+
+	partner, err := h.partnerService.GetByID(c.Request.Context(), id)
+	if err != nil {
+		if err.Error() == "partner not found" {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "Partner não encontrado",
+			})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
 	if err := h.partnerService.Delete(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Partner deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Partner deletado com sucesso",
+		"data":    h.toPartnerResponse(partner),
+	})
+}
+
+func (h *PartnerHandler) toPartnerResponse(partner *domain.Partner) dto.PartnerResponse {
+	return dto.PartnerResponse{
+		ID:        int(partner.ID),
+		Name:      partner.Name,
+		CNPJ:      partner.CNPJ,
+		Email:     partner.Email,
+		Mobile:    partner.Mobile,
+		Active:    partner.Active,
+		CreatedAt: partner.CreatedAt.Format("2006-01-02 15:04:05"),
+	}
 }
