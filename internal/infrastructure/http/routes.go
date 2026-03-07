@@ -18,11 +18,14 @@ type Router struct {
 	UserRoutes       RouteSetup
 
 	// New routes - refatoradas
-	PartnerRoutes            RouteSetup
-	CompanyRoutes            RouteSetup
-	EmployeeSubmissionRoutes RouteSetup
-	AssessmentTemplateRoutes RouteSetup
-	RiskMetricsRoutes        RouteSetup
+	PartnerRoutes                 RouteSetup
+	CompanyRoutes                 RouteSetup
+	EmployeeSubmissionRoutes      RouteSetup
+	AssessmentTemplateRoutes      RouteSetup
+	RiskMetricsRoutes             RouteSetup
+	AnalyticsRoutes               RouteSetup
+	ActionPlanRoutes              RouteSetup
+	QuestionnaireAssignmentRoutes RouteSetup
 }
 
 func NewRouter() *Router {
@@ -77,6 +80,15 @@ func (r *Router) SetupRoutes(engine *gin.Engine) {
 		}
 		if r.RiskMetricsRoutes != nil {
 			r.RiskMetricsRoutes.SetupRoutes(v1)
+		}
+		if r.AnalyticsRoutes != nil {
+			r.AnalyticsRoutes.SetupRoutes(v1)
+		}
+		if r.ActionPlanRoutes != nil {
+			r.ActionPlanRoutes.SetupRoutes(v1)
+		}
+		if r.QuestionnaireAssignmentRoutes != nil {
+			r.QuestionnaireAssignmentRoutes.SetupRoutes(v1)
 		}
 	}
 }

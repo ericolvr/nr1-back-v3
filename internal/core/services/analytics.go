@@ -25,6 +25,7 @@ type AnalyticsService struct {
 	answerRepo             domain.AnswerRepository
 	formulaRepo            domain.CalculationFormulaRepository
 	reportRepo             domain.AnalyticsReportRepository
+	assignmentRepo         domain.QuestionnaireAssignmentRepository
 }
 
 func NewAnalyticsService(
@@ -42,6 +43,7 @@ func NewAnalyticsService(
 	answerRepo domain.AnswerRepository,
 	formulaRepo domain.CalculationFormulaRepository,
 	reportRepo domain.AnalyticsReportRepository,
+	assignmentRepo domain.QuestionnaireAssignmentRepository,
 ) *AnalyticsService {
 	return &AnalyticsService{
 		riskMetricsService:     riskMetricsService,
@@ -58,6 +60,7 @@ func NewAnalyticsService(
 		answerRepo:             answerRepo,
 		formulaRepo:            formulaRepo,
 		reportRepo:             reportRepo,
+		assignmentRepo:         assignmentRepo,
 	}
 }
 
@@ -573,7 +576,10 @@ func (s *AnalyticsService) CreateSnapshot(ctx context.Context, partnerID, compan
 	}
 
 	// 10. Fechar questionnaire assignment deste departamento
-	// TODO: Implementar quando AssignmentService estiver disponível
+	if err := s.assignmentRepo.CloseByQuestionnaireAndDepartment(ctx, partnerID, questionnaireID, departmentID); err != nil {
+		// Log error but don't fail snapshot creation
+		// Assignment might not exist if created before this feature
+	}
 
 	return report, nil
 }

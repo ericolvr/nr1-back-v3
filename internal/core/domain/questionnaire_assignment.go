@@ -8,7 +8,7 @@ import (
 
 type QuestionnaireAssignment struct {
 	ID                int64      `json:"id"`
-	PartnerID          int64      `json:"partner_id"`
+	PartnerID         int64      `json:"partner_id"`
 	QuestionnaireID   int64      `json:"questionnaire_id"`
 	QuestionnaireName string     `json:"questionnaire_name,omitempty"`
 	DepartmentID      int64      `json:"department_id"`
@@ -29,6 +29,7 @@ type QuestionnaireAssignmentRepository interface {
 	ListByDepartment(ctx context.Context, tenantID, departmentID int64, limit, offset int64) ([]*QuestionnaireAssignment, error)
 	ListActive(ctx context.Context, tenantID, departmentID int64) ([]*QuestionnaireAssignment, error)
 	Update(ctx context.Context, assignment *QuestionnaireAssignment) error
+	CloseByQuestionnaireAndDepartment(ctx context.Context, partnerID, questionnaireID, departmentID int64) error
 	Delete(ctx context.Context, tenantID, id int64) error
 }
 

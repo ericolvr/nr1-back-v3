@@ -10,10 +10,10 @@ import (
 )
 
 type ActionPlanService struct {
-	actionPlanRepo domain.ActionPlanRepository
-	templateRepo   domain.ActionPlanTemplateRepository
+	actionPlanRepo   domain.ActionPlanRepository
+	templateRepo     domain.ActionPlanTemplateRepository
 	riskCategoryRepo domain.RiskCategoryRepository
-	departmentRepo domain.DepartmentRepository
+	departmentRepo   domain.DepartmentRepository
 }
 
 func NewActionPlanService(
@@ -23,10 +23,10 @@ func NewActionPlanService(
 	departmentRepo domain.DepartmentRepository,
 ) *ActionPlanService {
 	return &ActionPlanService{
-		actionPlanRepo: actionPlanRepo,
-		templateRepo:   templateRepo,
+		actionPlanRepo:   actionPlanRepo,
+		templateRepo:     templateRepo,
 		riskCategoryRepo: riskCategoryRepo,
-		departmentRepo: departmentRepo,
+		departmentRepo:   departmentRepo,
 	}
 }
 
@@ -36,7 +36,7 @@ func (s *ActionPlanService) AutoGenerateFromRiskCategories(
 	ctx context.Context,
 	partnerID, companyID, departmentID, questionnaireID, snapshotID int64,
 ) ([]*domain.ActionPlan, error) {
-	
+
 	// Buscar categorias de risco do snapshot
 	riskCategories, err := s.riskCategoryRepo.ListBySnapshot(ctx, partnerID, snapshotID)
 	if err != nil {
@@ -87,6 +87,41 @@ func (s *ActionPlanService) AutoGenerateFromRiskCategories(
 	return createdPlans, nil
 }
 
+// CRUD methods
+func (s *ActionPlanService) Create(ctx context.Context, actionPlan *domain.ActionPlan) error {
+	if err := actionPlan.Validate(); err != nil {
+		return err
+	}
+	return s.actionPlanRepo.Create(ctx, actionPlan)
+}
+
+func (s *ActionPlanService) List(ctx context.Context, partnerID int64, limit, offset int64) ([]*domain.ActionPlan, error) {
+	return s.actionPlanRepo.List(ctx, partnerID, limit, offset)
+}
+
+func (s *ActionPlanService) GetByID(ctx context.Context, partnerID, id int64) (*domain.ActionPlan, error) {
+	return s.actionPlanRepo.GetByID(ctx, partnerID, id)
+}
+
+func (s *ActionPlanService) Update(ctx context.Context, actionPlan *domain.ActionPlan) error {
+	if err := actionPlan.Validate(); err != nil {
+		return err
+	}
+	return s.actionPlanRepo.Update(ctx, actionPlan)
+}
+
+func (s *ActionPlanService) Delete(ctx context.Context, partnerID, id int64) error {
+	return s.actionPlanRepo.Delete(ctx, partnerID, id)
+}
+
+func (s *ActionPlanService) ListByDepartment(ctx context.Context, partnerID, departmentID int64, limit, offset int64) ([]*domain.ActionPlan, error) {
+	return s.actionPlanRepo.ListByDepartment(ctx, partnerID, departmentID, limit, offset)
+}
+
+func (s *ActionPlanService) ListByStatus(ctx context.Context, partnerID int64, status string, limit, offset int64) ([]*domain.ActionPlan, error) {
+	return s.actionPlanRepo.ListByStatus(ctx, partnerID, status, limit, offset)
+}
+
 // createFromTemplate cria um Action Plan a partir de um template
 func (s *ActionPlanService) createFromTemplate(
 	template *domain.ActionPlanTemplate,
@@ -94,7 +129,7 @@ func (s *ActionPlanService) createFromTemplate(
 	partnerID, companyID, departmentID, questionnaireID, snapshotID int64,
 	departmentName string,
 ) *domain.ActionPlan {
-	
+
 	// Substituir variáveis no template
 	title := s.replaceTemplateVars(template.TitleTemplate, riskCat, departmentName)
 	description := s.replaceTemplateVars(template.DescriptionTemplate, riskCat, departmentName)
@@ -127,71 +162,15 @@ func (s *ActionPlanService) replaceTemplateVars(
 	departmentName string,
 ) string {
 	result := template
-	
+
 	// Substituir variáveis
 	result = strings.ReplaceAll(result, "{category}", riskCat.Category)
 	result = strings.ReplaceAll(result, "{department_name}", departmentName)
 	result = strings.ReplaceAll(result, "{average_score}", fmt.Sprintf("%.2f", riskCat.AverageScore))
 	result = strings.ReplaceAll(result, "{risk_level}", riskCat.RiskLevel)
 	result = strings.ReplaceAll(result, "{question_count}", fmt.Sprintf("%d", riskCat.QuestionCount))
-	
+
 	return result
-}
-
-// Create cria um Action Plan manualmente
-func (s *ActionPlanService) Create(ctx context.Context, actionPlan *domain.ActionPlan) error {
-	if err := actionPlan.Validate(); err != nil {
-		return err
-	}
-
-	return s.actionPlanRepo.Create(ctx, actionPlan)
-}
-
-// GetByID busca um Action Plan por ID
-func (s *ActionPlanService) GetByID(ctx context.Context, partnerID, id int64) (*domain.ActionPlan, error) {
-	return s.actionPlanRepo.GetByID(ctx, partnerID, id)
-}
-
-// List lista Action Plans
-func (s *ActionPlanService) List(ctx context.Context, partnerID, limit, offset int64) ([]*domain.ActionPlan, error) {
-	if limit <= 0 {
-		limit = 20
-	}
-	if offset < 0 {
-		offset = 0
-	}
-	return s.actionPlanRepo.List(ctx, partnerID, limit, offset)
-}
-
-// ListByDepartment lista Action Plans por departamento
-func (s *ActionPlanService) ListByDepartment(ctx context.Context, partnerID, departmentID, limit, offset int64) ([]*domain.ActionPlan, error) {
-	if limit <= 0 {
-		limit = 20
-	}
-	if offset < 0 {
-		offset = 0
-	}
-	return s.actionPlanRepo.ListByDepartment(ctx, partnerID, departmentID, limit, offset)
-}
-
-// ListBySnapshot lista Action Plans por snapshot
-func (s *ActionPlanService) ListBySnapshot(ctx context.Context, partnerID, snapshotID, limit, offset int64) ([]*domain.ActionPlan, error) {
-	if limit <= 0 {
-		limit = 20
-	}
-	if offset < 0 {
-		offset = 0
-	}
-	return s.actionPlanRepo.ListBySnapshot(ctx, partnerID, snapshotID, limit, offset)
-}
-
-// Update atualiza um Action Plan
-func (s *ActionPlanService) Update(ctx context.Context, actionPlan *domain.ActionPlan) error {
-	if err := actionPlan.Validate(); err != nil {
-		return err
-	}
-
-	return s.actionPlanRepo.Update(ctx, actionPlan)
 }
 
 // MarkAsCompleted marca um Action Plan como completado
@@ -214,9 +193,4 @@ func (s *ActionPlanService) MarkAsInProgress(ctx context.Context, partnerID, id 
 
 	actionPlan.MarkAsInProgress()
 	return s.actionPlanRepo.Update(ctx, actionPlan)
-}
-
-// Delete deleta um Action Plan
-func (s *ActionPlanService) Delete(ctx context.Context, partnerID, id int64) error {
-	return s.actionPlanRepo.Delete(ctx, partnerID, id)
 }

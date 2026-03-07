@@ -160,6 +160,63 @@ func (r *ActionPlanRepository) Update(ctx context.Context, actionPlan *domain.Ac
 	return err
 }
 
+func (r *ActionPlanRepository) ListByQuestionnaire(ctx context.Context, partnerID, questionnaireID int64, limit, offset int64) ([]*domain.ActionPlan, error) {
+	query := `
+		SELECT id, partner_id, company_id, questionnaire_id, department_id, snapshot_id,
+			   title, description, risk_level, priority, category, responsible_name, responsible_id,
+			   status, due_date, completed_at, evidence_urls, notes, created_at, updated_at
+		FROM action_plans
+		WHERE partner_id = $1 AND questionnaire_id = $2
+		ORDER BY created_at DESC
+		LIMIT $3 OFFSET $4`
+
+	rows, err := r.db.QueryContext(ctx, query, partnerID, questionnaireID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return r.scanActionPlans(rows)
+}
+
+func (r *ActionPlanRepository) ListByResponsible(ctx context.Context, partnerID, responsibleID int64, limit, offset int64) ([]*domain.ActionPlan, error) {
+	query := `
+		SELECT id, partner_id, company_id, questionnaire_id, department_id, snapshot_id,
+			   title, description, risk_level, priority, category, responsible_name, responsible_id,
+			   status, due_date, completed_at, evidence_urls, notes, created_at, updated_at
+		FROM action_plans
+		WHERE partner_id = $1 AND responsible_id = $2
+		ORDER BY created_at DESC
+		LIMIT $3 OFFSET $4`
+
+	rows, err := r.db.QueryContext(ctx, query, partnerID, responsibleID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return r.scanActionPlans(rows)
+}
+
+func (r *ActionPlanRepository) ListByStatus(ctx context.Context, partnerID int64, status string, limit, offset int64) ([]*domain.ActionPlan, error) {
+	query := `
+		SELECT id, partner_id, company_id, questionnaire_id, department_id, snapshot_id,
+			   title, description, risk_level, priority, category, responsible_name, responsible_id,
+			   status, due_date, completed_at, evidence_urls, notes, created_at, updated_at
+		FROM action_plans
+		WHERE partner_id = $1 AND status = $2
+		ORDER BY created_at DESC
+		LIMIT $3 OFFSET $4`
+
+	rows, err := r.db.QueryContext(ctx, query, partnerID, status, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return r.scanActionPlans(rows)
+}
+
 func (r *ActionPlanRepository) Delete(ctx context.Context, partnerID, id int64) error {
 	query := `DELETE FROM action_plans WHERE partner_id = $1 AND id = $2`
 	_, err := r.db.ExecContext(ctx, query, partnerID, id)

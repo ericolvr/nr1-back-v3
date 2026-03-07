@@ -50,7 +50,6 @@ func (s *Server) Start() error {
 	go func() {
 		log.Printf("Servidor iniciado na porta %s", s.port)
 		log.Printf("Health check: http://localhost:%s/health", s.port)
-		log.Printf("API Base URL: http://localhost:%s/api/v1", s.port)
 
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Erro ao iniciar servidor: %v", err)

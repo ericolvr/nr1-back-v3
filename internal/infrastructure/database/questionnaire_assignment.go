@@ -84,14 +84,15 @@ func (r *QuestionnaireAssignmentRepository) List(ctx context.Context, partnerID,
 	return r.scanAssignments(rows)
 }
 
-func (r *QuestionnaireAssignmentRepository) ListByQuestionnaire(ctx context.Context, partnerID, questionnaireID int64) ([]*domain.QuestionnaireAssignment, error) {
+func (r *QuestionnaireAssignmentRepository) ListByQuestionnaire(ctx context.Context, partnerID, questionnaireID int64, limit, offset int64) ([]*domain.QuestionnaireAssignment, error) {
 	query := `
-		SELECT id, partner_id, questionnaire_id, department_id, active, created_at, updated_at
+		SELECT id, partner_id, questionnaire_id, department_id, active, started_at, closed_at, created_at, updated_at
 		FROM questionnaire_assignments
 		WHERE partner_id = $1 AND questionnaire_id = $2
-		ORDER BY created_at DESC`
+		ORDER BY created_at DESC
+		LIMIT $3 OFFSET $4`
 
-	rows, err := r.db.QueryContext(ctx, query, partnerID, questionnaireID)
+	rows, err := r.db.QueryContext(ctx, query, partnerID, questionnaireID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -100,11 +101,28 @@ func (r *QuestionnaireAssignmentRepository) ListByQuestionnaire(ctx context.Cont
 	return r.scanAssignments(rows)
 }
 
-func (r *QuestionnaireAssignmentRepository) ListByDepartment(ctx context.Context, partnerID, departmentID int64) ([]*domain.QuestionnaireAssignment, error) {
+func (r *QuestionnaireAssignmentRepository) ListByDepartment(ctx context.Context, partnerID, departmentID int64, limit, offset int64) ([]*domain.QuestionnaireAssignment, error) {
 	query := `
-		SELECT id, partner_id, questionnaire_id, department_id, active, created_at, updated_at
+		SELECT id, partner_id, questionnaire_id, department_id, active, started_at, closed_at, created_at, updated_at
 		FROM questionnaire_assignments
 		WHERE partner_id = $1 AND department_id = $2
+		ORDER BY created_at DESC
+		LIMIT $3 OFFSET $4`
+
+	rows, err := r.db.QueryContext(ctx, query, partnerID, departmentID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return r.scanAssignments(rows)
+}
+
+func (r *QuestionnaireAssignmentRepository) ListActive(ctx context.Context, partnerID, departmentID int64) ([]*domain.QuestionnaireAssignment, error) {
+	query := `
+		SELECT id, partner_id, questionnaire_id, department_id, active, started_at, closed_at, created_at, updated_at
+		FROM questionnaire_assignments
+		WHERE partner_id = $1 AND department_id = $2 AND active = true
 		ORDER BY created_at DESC`
 
 	rows, err := r.db.QueryContext(ctx, query, partnerID, departmentID)
@@ -126,6 +144,16 @@ func (r *QuestionnaireAssignmentRepository) Update(ctx context.Context, assignme
 	return err
 }
 
+func (r *QuestionnaireAssignmentRepository) CloseByQuestionnaireAndDepartment(ctx context.Context, partnerID, questionnaireID, departmentID int64) error {
+	query := `
+		UPDATE questionnaire_assignments 
+		SET active = false, closed_at = NOW(), updated_at = NOW()
+		WHERE partner_id = $1 AND questionnaire_id = $2 AND department_id = $3 AND active = true`
+
+	_, err := r.db.ExecContext(ctx, query, partnerID, questionnaireID, departmentID)
+	return err
+}
+
 func (r *QuestionnaireAssignmentRepository) Delete(ctx context.Context, partnerID, id int64) error {
 	query := `DELETE FROM questionnaire_assignments WHERE partner_id = $1 AND id = $2`
 	_, err := r.db.ExecContext(ctx, query, partnerID, id)
@@ -138,7 +166,8 @@ func (r *QuestionnaireAssignmentRepository) scanAssignments(rows *sql.Rows) ([]*
 	for rows.Next() {
 		var qa domain.QuestionnaireAssignment
 		err := rows.Scan(
-			&qa.ID, &qa.PartnerID, &qa.QuestionnaireID, &qa.DepartmentID, &qa.Active, &qa.CreatedAt, &qa.UpdatedAt,
+			&qa.ID, &qa.PartnerID, &qa.QuestionnaireID, &qa.DepartmentID, &qa.Active,
+			&qa.StartedAt, &qa.ClosedAt, &qa.CreatedAt, &qa.UpdatedAt,
 		)
 
 		if err != nil {
