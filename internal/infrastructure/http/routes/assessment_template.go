@@ -8,22 +8,28 @@ import (
 
 type AssessmentTemplateRoutes struct {
 	templateHandler *api.AssessmentTemplateHandler
+	versionHandler  *api.AssessmentVersionHandler
 }
 
-func NewAssessmentTemplateRoutes(templateHandler *api.AssessmentTemplateHandler) *AssessmentTemplateRoutes {
+func NewAssessmentTemplateRoutes(templateHandler *api.AssessmentTemplateHandler, versionHandler *api.AssessmentVersionHandler) *AssessmentTemplateRoutes {
 	return &AssessmentTemplateRoutes{
 		templateHandler: templateHandler,
+		versionHandler:  versionHandler,
 	}
 }
 
 func (r *AssessmentTemplateRoutes) SetupRoutes(v1 *gin.RouterGroup) {
-	templates := v1.Group("/questionnaires")
+	templates := v1.Group("/assessments")
 	templates.Use(middleware.PartnerMiddleware())
+	templates.Use(middleware.JWTMiddleware())
 	{
 		templates.POST("", r.templateHandler.Create)
 		templates.GET("", r.templateHandler.List)
+		templates.GET("/deleted", r.templateHandler.ListDeleted)
+		templates.GET("/:id/versions", r.versionHandler.ListByTemplate)
 		templates.GET("/:id", r.templateHandler.GetByID)
 		templates.PUT("/:id", r.templateHandler.Update)
+		templates.PATCH("/:id/toggle-active", r.templateHandler.ToggleActive)
 		templates.DELETE("/:id", r.templateHandler.Delete)
 	}
 }

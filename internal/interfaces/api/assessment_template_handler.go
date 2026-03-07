@@ -6,6 +6,7 @@ import (
 
 	"github.com/ericolvr/sec-back-v2/internal/core/domain"
 	"github.com/ericolvr/sec-back-v2/internal/core/services"
+	"github.com/ericolvr/sec-back-v2/internal/interfaces/dto"
 	"github.com/gin-gonic/gin"
 )
 
@@ -131,7 +132,8 @@ func (h *AssessmentTemplateHandler) Update(c *gin.Context) {
 		template.Active = *req.Active
 	}
 
-	if err := h.templateService.Update(c.Request.Context(), template); err != nil {
+	userID := c.GetInt64("user_id")
+	if err := h.templateService.Update(c.Request.Context(), template, userID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -153,4 +155,73 @@ func (h *AssessmentTemplateHandler) Delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Template deleted successfully"})
+}
+
+func (h *AssessmentTemplateHandler) ToggleActive(c *gin.Context) {
+	partnerID := c.GetInt64("partner_id")
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "ID deve ser um número válido",
+		})
+		return
+	}
+
+	var req dto.ToggleActiveRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid request body",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	if err := h.templateService.ToggleActive(c.Request.Context(), partnerID, id, req.Active); err != nil {
+		if err.Error() == "sql: no rows in result set" {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "Template não encontrado",
+			})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	message := "Template desativado com sucesso"
+	if req.Active {
+		message = "Template reativado com sucesso"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": message,
+	})
+}
+
+func (h *AssessmentTemplateHandler) ListDeleted(c *gin.Context) {
+	partnerID := c.GetInt64("partner_id")
+	limitStr := c.DefaultQuery("limit", "20")
+	offsetStr := c.DefaultQuery("offset", "0")
+
+	limit, err := strconv.ParseInt(limitStr, 10, 64)
+	if err != nil {
+		limit = 20
+	}
+
+	offset, err := strconv.ParseInt(offsetStr, 10, 64)
+	if err != nil {
+		offset = 0
+	}
+
+	templates, err := h.templateService.ListDeleted(c.Request.Context(), partnerID, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Erro ao listar templates",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, templates)
 }

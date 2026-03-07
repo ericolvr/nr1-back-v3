@@ -22,9 +22,11 @@ type AssessmentTemplate struct {
 type AssessmentTemplateRepository interface {
 	Create(ctx context.Context, template *AssessmentTemplate) error
 	List(ctx context.Context, partnerID int64, limit, offset int64) ([]*AssessmentTemplate, error)
+	ListDeleted(ctx context.Context, partnerID int64, limit, offset int64) ([]*AssessmentTemplate, error)
 	GetByID(ctx context.Context, partnerID, id int64) (*AssessmentTemplate, error)
 	Update(ctx context.Context, template *AssessmentTemplate) error
 	Delete(ctx context.Context, partnerID, id int64) error
+	ToggleActive(ctx context.Context, partnerID, id int64, active bool) error
 	IncrementVersion(ctx context.Context, partnerID, id int64) error
 }
 

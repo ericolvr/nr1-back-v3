@@ -42,6 +42,7 @@ func main() {
 	reportRepo := database.NewAnalyticsReportRepository(db)
 	assignmentRepo := database.NewQuestionnaireAssignmentRepository(db)
 	riskMetricsRepo := database.NewRiskMetricsRepository(db)
+	versionRepo := database.NewAssessmentVersionRepository(db)
 
 	// Services
 	smsProvider := sms.NewTwilioProvider()
@@ -53,7 +54,8 @@ func main() {
 	userService := services.NewUserService(userRepo, smsProvider)
 	companyService := services.NewCompanyService(companyRepo, partnerRepo)
 	partnerService := services.NewPartnerService(partnerRepo)
-	templateService := services.NewAssessmentTemplateService(templateRepo, partnerRepo)
+	versionService := services.NewAssessmentVersionService(versionRepo)
+	templateService := services.NewAssessmentTemplateService(templateRepo, partnerRepo, versionService)
 	submissionService := services.NewEmployeeSubmissionService(submissionRepo, employeeRepo, templateRepo)
 	assignmentService := services.NewQuestionnaireAssignmentService(assignmentRepo, departmentRepo)
 
@@ -107,6 +109,7 @@ func main() {
 	companyHandler := api.NewCompanyHandler(companyService)
 	partnerHandler := api.NewPartnerHandler(partnerService)
 	templateHandler := api.NewAssessmentTemplateHandler(templateService)
+	versionHandler := api.NewAssessmentVersionHandler(versionService)
 	submissionHandler := api.NewEmployeeSubmissionHandler(submissionService)
 	assignmentHandler := api.NewQuestionnaireAssignmentHandler(assignmentService)
 
@@ -122,7 +125,7 @@ func main() {
 	router.ActionPlanRoutes = routes.NewActionPlanRoutes(actionPlanHandler)
 	router.CompanyRoutes = routes.NewCompanyRoutes(companyHandler)
 	router.PartnerRoutes = routes.NewPartnerRoutes(partnerHandler)
-	router.AssessmentTemplateRoutes = routes.NewAssessmentTemplateRoutes(templateHandler)
+	router.AssessmentTemplateRoutes = routes.NewAssessmentTemplateRoutes(templateHandler, versionHandler)
 	router.EmployeeSubmissionRoutes = routes.NewEmployeeSubmissionRoutes(submissionHandler)
 	router.QuestionnaireAssignmentRoutes = routes.NewQuestionnaireAssignmentRoutes(assignmentHandler)
 

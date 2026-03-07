@@ -30,7 +30,7 @@ func (r *AssessmentTemplateRepository) List(ctx context.Context, partnerID int64
 	query := `
 		SELECT id, partner_id, name, description, version, active, created_at, updated_at
 		FROM assessment_templates
-		WHERE partner_id = $1
+		WHERE partner_id = $1 AND active = true
 		ORDER BY name ASC
 		LIMIT $2 OFFSET $3
 	`
@@ -69,7 +69,7 @@ func (r *AssessmentTemplateRepository) GetByID(ctx context.Context, partnerID, i
 func (r *AssessmentTemplateRepository) Update(ctx context.Context, template *domain.AssessmentTemplate) error {
 	query := `
 		UPDATE assessment_templates
-		SET name = $1, description = $2, active = $3, updated_at = CURRENT_TIMESTAMP
+		SET name = $1, description = $2, active = $3, version = version + 1, updated_at = CURRENT_TIMESTAMP
 		WHERE partner_id = $4 AND id = $5
 		RETURNING id, partner_id, name, description, version, active, created_at, updated_at
 	`
@@ -92,4 +92,53 @@ func (r *AssessmentTemplateRepository) IncrementVersion(ctx context.Context, par
 	`
 	_, err := r.db.ExecContext(ctx, query, partnerID, id)
 	return err
+}
+
+func (r *AssessmentTemplateRepository) ToggleActive(ctx context.Context, partnerID, id int64, active bool) error {
+	query := `
+		UPDATE assessment_templates
+		SET active = $1, updated_at = CURRENT_TIMESTAMP
+		WHERE partner_id = $2 AND id = $3
+	`
+	result, err := r.db.ExecContext(ctx, query, active, partnerID, id)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+func (r *AssessmentTemplateRepository) ListDeleted(ctx context.Context, partnerID int64, limit, offset int64) ([]*domain.AssessmentTemplate, error) {
+	query := `
+		SELECT id, partner_id, name, description, version, active, created_at, updated_at
+		FROM assessment_templates
+		WHERE partner_id = $1 AND active = false
+		ORDER BY name ASC
+		LIMIT $2 OFFSET $3
+	`
+	rows, err := r.db.QueryContext(ctx, query, partnerID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var templates []*domain.AssessmentTemplate
+	for rows.Next() {
+		var t domain.AssessmentTemplate
+		err := rows.Scan(&t.ID, &t.PartnerID, &t.Name, &t.Description, &t.Version, &t.Active, &t.CreatedAt, &t.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		templates = append(templates, &t)
+	}
+	return templates, nil
 }
