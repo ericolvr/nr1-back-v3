@@ -42,7 +42,8 @@ func (h *AssessmentAssignmentHandler) Create(c *gin.Context) {
 		Active:        true,
 	}
 
-	if err := h.assignmentService.Create(c.Request.Context(), assignment); err != nil {
+	submissionsCount, err := h.assignmentService.Create(c.Request.Context(), assignment)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -58,18 +59,20 @@ func (h *AssessmentAssignmentHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Se alguns falharam, retorna sucesso parcial
+	// Se houve erros parciais, retorna sucesso com erros
 	if len(errors) > 0 {
 		c.JSON(http.StatusCreated, gin.H{
-			"success": successAssignments,
-			"errors":  errors,
+			"success":             successAssignments,
+			"submissions_created": submissionsCount,
+			"errors":              errors,
 		})
 		return
 	}
 
-	// Todos criados com sucesso
+	// Sucesso total
 	c.JSON(http.StatusCreated, gin.H{
-		"success": successAssignments,
+		"success":             successAssignments,
+		"submissions_created": submissionsCount,
 	})
 }
 

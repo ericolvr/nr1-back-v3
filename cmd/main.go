@@ -43,6 +43,7 @@ func main() {
 	assignmentRepo := database.NewAssessmentAssignmentRepository(db)
 	riskMetricsRepo := database.NewRiskMetricsRepository(db)
 	versionRepo := database.NewAssessmentVersionRepository(db)
+	invitationRepo := database.NewInvitationRepository(db)
 
 	// Services
 	smsProvider := sms.NewTwilioProvider()
@@ -57,7 +58,8 @@ func main() {
 	versionService := services.NewAssessmentVersionService(versionRepo)
 	templateService := services.NewAssessmentTemplateService(templateRepo, partnerRepo, versionService)
 	submissionService := services.NewEmployeeSubmissionService(submissionRepo, employeeRepo, templateRepo)
-	assignmentService := services.NewAssessmentAssignmentService(assignmentRepo, departmentRepo)
+	assignmentService := services.NewAssessmentAssignmentService(assignmentRepo, departmentRepo, employeeRepo, submissionRepo, invitationRepo)
+	invitationService := services.NewInvitationService(invitationRepo, submissionRepo, employeeRepo)
 
 	// RiskMetricsService e AnalyticsService
 	riskMetricsService := services.NewRiskMetricsService(
@@ -112,6 +114,7 @@ func main() {
 	versionHandler := api.NewAssessmentVersionHandler(versionService)
 	submissionHandler := api.NewEmployeeSubmissionHandler(submissionService)
 	assignmentHandler := api.NewAssessmentAssignmentHandler(assignmentService)
+	invitationHandler := api.NewInvitationHandler(invitationService, assignmentService)
 
 	// Routes
 	router := httpServer.NewRouter()
@@ -128,6 +131,7 @@ func main() {
 	router.AssessmentTemplateRoutes = routes.NewAssessmentTemplateRoutes(templateHandler, versionHandler, questionHandler)
 	router.EmployeeSubmissionRoutes = routes.NewEmployeeSubmissionRoutes(submissionHandler)
 	router.AssessmentAssignmentRoutes = routes.NewAssessmentAssignmentRoutes(assignmentHandler)
+	router.InvitationRoutes = routes.NewInvitationRoutes(invitationHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
