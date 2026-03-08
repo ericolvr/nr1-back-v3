@@ -255,14 +255,13 @@ func (h *AnswerHandler) SubmitBatch(c *gin.Context) {
 
 	// Atualizar status do Response para completed
 	response.Status = domain.SubmissionStatusCompleted
-	// TODO: Implementar submissionService.Update quando necessário
-	// if err := h.submissionService.Update(c.Request.Context(), response); err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{
-	// 		"error":   "Erro ao finalizar template",
-	// 		"details": err.Error(),
-	// 	})
-	// 	return
-	// }
+	if err := h.submissionService.UpdateStatus(c.Request.Context(), response.PartnerID, response.ID, domain.SubmissionStatusCompleted); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Erro ao finalizar template",
+			"details": err.Error(),
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":     "Questionário enviado com sucesso",

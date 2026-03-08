@@ -20,6 +20,7 @@ func (r *InvitationRoutes) SetupRoutes(v1 *gin.RouterGroup) {
 	{
 		invitations.GET("", r.handler.List)
 		invitations.GET("/summary", r.handler.GetSummary)
+		invitations.POST("/send-all", r.handler.SendAllInvitations)
 		invitations.GET("/:id", r.handler.GetByID)
 		invitations.PUT("/:id/sent", r.handler.MarkAsSent)
 		invitations.PUT("/:id/failed", r.handler.MarkAsFailed)

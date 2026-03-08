@@ -1,7 +1,10 @@
 package api
 
 import (
+	"context"
+	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/ericolvr/sec-back-v2/internal/core/domain"
@@ -13,15 +16,21 @@ import (
 type InvitationHandler struct {
 	invitationService *services.InvitationService
 	assignmentService *services.AssessmentAssignmentService
+	submissionService *services.EmployeeSubmissionService
+	emailService      *services.EmailService
 }
 
 func NewInvitationHandler(
 	invitationService *services.InvitationService,
 	assignmentService *services.AssessmentAssignmentService,
+	submissionService *services.EmployeeSubmissionService,
+	emailService *services.EmailService,
 ) *InvitationHandler {
 	return &InvitationHandler{
 		invitationService: invitationService,
 		assignmentService: assignmentService,
+		submissionService: submissionService,
+		emailService:      emailService,
 	}
 }
 
@@ -181,6 +190,157 @@ func (h *InvitationHandler) Delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Convite removido com sucesso"})
+}
+
+func (h *InvitationHandler) SendAllInvitations(c *gin.Context) {
+	partnerID := c.GetInt64("partner_id")
+	templateIDStr := c.Query("template_id")
+	departmentIDStr := c.Query("department_id")
+
+	if templateIDStr == "" || departmentIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "template_id e department_id são obrigatórios",
+		})
+		return
+	}
+
+	templateID, err := strconv.ParseInt(templateIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "template_id inválido",
+		})
+		return
+	}
+
+	departmentID, err := strconv.ParseInt(departmentIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "department_id inválido",
+		})
+		return
+	}
+
+	fmt.Printf("📨 [SEND-ALL] Iniciando envio em massa (assíncrono):\n")
+	fmt.Printf("   - Template ID: %d\n", templateID)
+	fmt.Printf("   - Department ID: %d\n", departmentID)
+
+	// Buscar assignment para pegar os nomes
+	assignment, err := h.assignmentService.GetByTemplateAndDepartment(
+		c.Request.Context(),
+		partnerID,
+		templateID,
+		departmentID,
+	)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Assignment não encontrado",
+		})
+		return
+	}
+
+	// Buscar todas as invitations
+	invitations, err := h.invitationService.ListByTemplateAndDepartment(
+		c.Request.Context(),
+		partnerID,
+		templateID,
+		departmentID,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Erro ao buscar convites",
+		})
+		return
+	}
+
+	if len(invitations) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Nenhum convite para enviar",
+			"total":   0,
+			"status":  "completed",
+		})
+		return
+	}
+
+	// Contar quantos serão enviados
+	toSendCount := 0
+	alreadySentCount := 0
+	for _, inv := range invitations {
+		if inv.Status == domain.InvitationStatusSent {
+			alreadySentCount++
+		} else {
+			toSendCount++
+		}
+	}
+
+	fmt.Printf("   - Total de invitations: %d\n", len(invitations))
+	fmt.Printf("   - A enviar: %d\n", toSendCount)
+	fmt.Printf("   - Já enviados: %d\n", alreadySentCount)
+
+	// Processar envios em goroutine (assíncrono)
+	go func() {
+		ctx := context.Background()
+
+		frontendURL := os.Getenv("FRONTEND_URL")
+		if frontendURL == "" {
+			frontendURL = "http://localhost:5173"
+		}
+
+		sentCount := 0
+		failedCount := 0
+
+		for _, inv := range invitations {
+			// Pular se já foi enviado
+			if inv.Status == domain.InvitationStatusSent {
+				fmt.Printf("   ⏭️  Pulando %s (já enviado)\n", inv.EmployeeEmail)
+				continue
+			}
+
+			// Buscar o EmployeeSubmission para pegar o token
+			submission, err := h.submissionService.GetByID(ctx, partnerID, inv.ResponseID)
+			if err != nil {
+				failedCount++
+				fmt.Printf("   ❌ Erro ao buscar submission para %s\n", inv.EmployeeEmail)
+				h.invitationService.MarkAsFailed(ctx, partnerID, inv.ID)
+				continue
+			}
+
+			surveyURL := fmt.Sprintf("%s/survey?token=%s", frontendURL, submission.InvitationToken)
+
+			// Enviar email
+			fmt.Printf("   📧 Enviando para %s...\n", inv.EmployeeEmail)
+			err = h.emailService.SendInvitation(
+				inv.EmployeeEmail,
+				assignment.TemplateName,
+				submission.InvitationToken,
+				surveyURL,
+			)
+
+			if err != nil {
+				failedCount++
+				fmt.Printf("   ❌ Falha ao enviar para %s: %v\n", inv.EmployeeEmail, err)
+				h.invitationService.MarkAsFailed(ctx, partnerID, inv.ID)
+			} else {
+				sentCount++
+				fmt.Printf("   ✅ Enviado para %s\n", inv.EmployeeEmail)
+				h.invitationService.MarkAsSent(ctx, partnerID, inv.ID)
+			}
+		}
+
+		fmt.Printf("📊 [SEND-ALL] Resumo final:\n")
+		fmt.Printf("   - Total: %d\n", len(invitations))
+		fmt.Printf("   - Enviados: %d\n", sentCount)
+		fmt.Printf("   - Falhas: %d\n", failedCount)
+		fmt.Printf("   - Já enviados: %d\n", alreadySentCount)
+	}()
+
+	// Retornar resposta imediata ao frontend
+	c.JSON(http.StatusAccepted, gin.H{
+		"message":      "Envio de convites iniciado em background",
+		"status":       "processing",
+		"total":        len(invitations),
+		"to_send":      toSendCount,
+		"already_sent": alreadySentCount,
+	})
 }
 
 func (h *InvitationHandler) toInvitationResponse(invitation *domain.Invitation) dto.InvitationResponse {

@@ -47,7 +47,7 @@ func main() {
 
 	// Services
 	smsProvider := sms.NewTwilioProvider()
-	answerService := services.NewAnswerService(answerRepo, questionRepo, nil)
+	answerService := services.NewAnswerService(answerRepo, questionRepo, submissionRepo)
 	authService := services.NewAuthService(userRepo)
 	departmentService := services.NewDepartmentService(departmentRepo)
 	employeeService := services.NewEmployeeService(employeeRepo)
@@ -99,8 +99,10 @@ func main() {
 		departmentRepo,
 	)
 
+	emailService := services.NewEmailService()
+
 	// Handlers
-	answerHandler := api.NewAnswerHandler(answerService, nil)
+	answerHandler := api.NewAnswerHandler(answerService, submissionService)
 	authHandler := api.NewAuthHandler(authService)
 	departmentHandler := api.NewDepartmentHandler(departmentService)
 	employeeHandler := api.NewEmployeeHandler(employeeService)
@@ -114,7 +116,9 @@ func main() {
 	versionHandler := api.NewAssessmentVersionHandler(versionService)
 	submissionHandler := api.NewEmployeeSubmissionHandler(submissionService)
 	assignmentHandler := api.NewAssessmentAssignmentHandler(assignmentService)
-	invitationHandler := api.NewInvitationHandler(invitationService, assignmentService)
+	invitationHandler := api.NewInvitationHandler(invitationService, assignmentService, submissionService, emailService)
+	emailHandler := api.NewEmailHandler(emailService)
+	surveyHandler := api.NewSurveyHandler(submissionService, questionService, templateService)
 
 	// Routes
 	router := httpServer.NewRouter()
@@ -132,6 +136,8 @@ func main() {
 	router.EmployeeSubmissionRoutes = routes.NewEmployeeSubmissionRoutes(submissionHandler)
 	router.AssessmentAssignmentRoutes = routes.NewAssessmentAssignmentRoutes(assignmentHandler)
 	router.InvitationRoutes = routes.NewInvitationRoutes(invitationHandler)
+	router.EmailRoutes = routes.NewEmailRoutes(emailHandler)
+	router.SurveyRoutes = routes.NewSurveyRoutes(surveyHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
