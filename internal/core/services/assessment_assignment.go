@@ -28,17 +28,15 @@ func (s *AssessmentAssignmentService) Create(ctx context.Context, assignment *do
 		return err
 	}
 
-	_, err := s.departmentRepo.GetByID(ctx, assignment.PartnerID, assignment.DepartmentID)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return errors.New("department not found")
+	// Validar que todos os departments existem
+	for _, deptID := range assignment.DepartmentIDs {
+		_, err := s.departmentRepo.GetByID(ctx, assignment.PartnerID, deptID)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return errors.New("department not found")
+			}
+			return err
 		}
-		return err
-	}
-
-	existing, err := s.assignmentRepo.GetByTemplateAndDepartment(ctx, assignment.PartnerID, assignment.TemplateID, assignment.DepartmentID)
-	if err == nil && existing != nil {
-		return errors.New("assessment already assigned to this department")
 	}
 
 	return s.assignmentRepo.Create(ctx, assignment)
@@ -80,6 +78,36 @@ func (s *AssessmentAssignmentService) Activate(ctx context.Context, partnerID, i
 	}
 
 	assignment.Active = true
+	return s.assignmentRepo.Update(ctx, assignment)
+}
+
+func (s *AssessmentAssignmentService) Update(ctx context.Context, partnerID, id int64, templateID *int64, departmentIDs []int64, active *bool) error {
+	assignment, err := s.assignmentRepo.GetByID(ctx, partnerID, id)
+	if err != nil {
+		return errors.New("assignment not found")
+	}
+
+	// Atualizar campos se fornecidos
+	if templateID != nil {
+		assignment.TemplateID = *templateID
+	}
+	if len(departmentIDs) > 0 {
+		// Validar que todos os departments existem
+		for _, deptID := range departmentIDs {
+			_, err := s.departmentRepo.GetByID(ctx, partnerID, deptID)
+			if err != nil {
+				if err == sql.ErrNoRows {
+					return errors.New("department not found")
+				}
+				return err
+			}
+		}
+		assignment.DepartmentIDs = departmentIDs
+	}
+	if active != nil {
+		assignment.Active = *active
+	}
+
 	return s.assignmentRepo.Update(ctx, assignment)
 }
 

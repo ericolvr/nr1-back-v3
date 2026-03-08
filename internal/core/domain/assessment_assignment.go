@@ -7,19 +7,17 @@ import (
 )
 
 type AssessmentAssignment struct {
-	ID             int64      `json:"id"`
-	PartnerID      int64      `json:"partner_id"`
-	TemplateID     int64      `json:"template_id"`
-	TemplateName   string     `json:"template_name,omitempty"`
-	CompanyID      int64      `json:"company_id,omitempty"`
-	CompanyName    string     `json:"company_name,omitempty"`
-	DepartmentID   int64      `json:"department_id"`
-	DepartmentName string     `json:"department_name,omitempty"`
-	Active         bool       `json:"active"`
-	StartedAt      time.Time  `json:"started_at"`
-	ClosedAt       *time.Time `json:"closed_at"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	ID            int64      `json:"id"`
+	PartnerID     int64      `json:"partner_id"`
+	TemplateID    int64      `json:"template_id"`
+	TemplateName  string     `json:"template_name,omitempty"`
+	DepartmentIDs []int64    `json:"department_ids"`
+	Departments   []string   `json:"departments,omitempty"` // Nomes dos departments (preenchido via JOIN)
+	Active        bool       `json:"active"`
+	StartedAt     time.Time  `json:"started_at"`
+	ClosedAt      *time.Time `json:"closed_at"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
 type AssessmentAssignmentRepository interface {
@@ -44,8 +42,8 @@ func (aa *AssessmentAssignment) Validate() error {
 		return fmt.Errorf("template_id is required")
 	}
 
-	if aa.DepartmentID <= 0 {
-		return fmt.Errorf("department_id is required")
+	if len(aa.DepartmentIDs) == 0 {
+		return fmt.Errorf("at least one department_id is required")
 	}
 
 	return nil

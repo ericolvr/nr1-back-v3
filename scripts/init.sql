@@ -283,20 +283,19 @@ CREATE TABLE assessment_assignments (
     id SERIAL PRIMARY KEY,
     partner_id BIGINT NOT NULL,
     template_id BIGINT NOT NULL,
-    department_id BIGINT NOT NULL,
+    department_ids BIGINT[] NOT NULL,
     active BOOLEAN DEFAULT true,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     closed_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (partner_id) REFERENCES partners(id) ON DELETE CASCADE,
-    FOREIGN KEY (template_id) REFERENCES assessment_templates(id) ON DELETE CASCADE,
-    FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE CASCADE
+    FOREIGN KEY (template_id) REFERENCES assessment_templates(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_assessment_assignments_partner_id ON assessment_assignments(partner_id);
 CREATE INDEX idx_assessment_assignments_template_id ON assessment_assignments(template_id);
-CREATE INDEX idx_assessment_assignments_department_id ON assessment_assignments(department_id);
+CREATE INDEX idx_assessment_assignments_department_ids ON assessment_assignments USING GIN(department_ids);
 
 -- ============================================
 -- INVITATIONS

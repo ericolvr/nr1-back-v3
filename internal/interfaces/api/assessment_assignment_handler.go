@@ -35,23 +35,19 @@ func (h *AssessmentAssignmentHandler) Create(c *gin.Context) {
 	var successAssignments []*domain.AssessmentAssignment
 	var errors []map[string]interface{}
 
-	for _, departmentID := range req.DepartmentIDs {
-		assignment := &domain.AssessmentAssignment{
-			PartnerID:    partnerID,
-			TemplateID:   req.TemplateID,
-			DepartmentID: departmentID,
-			Active:       true,
-		}
-
-		if err := h.assignmentService.Create(c.Request.Context(), assignment); err != nil {
-			errors = append(errors, map[string]interface{}{
-				"department_id": departmentID,
-				"error":         err.Error(),
-			})
-		} else {
-			successAssignments = append(successAssignments, assignment)
-		}
+	assignment := &domain.AssessmentAssignment{
+		PartnerID:     partnerID,
+		TemplateID:    req.TemplateID,
+		DepartmentIDs: req.DepartmentIDs,
+		Active:        true,
 	}
+
+	if err := h.assignmentService.Create(c.Request.Context(), assignment); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	successAssignments = append(successAssignments, assignment)
 
 	// Se todos falharam, retorna erro
 	if len(successAssignments) == 0 {
@@ -130,6 +126,39 @@ func (h *AssessmentAssignmentHandler) Close(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Assignment closed successfully"})
+}
+
+func (h *AssessmentAssignmentHandler) Update(c *gin.Context) {
+	partnerID := c.GetInt64("partner_id")
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	var req struct {
+		TemplateID    *int64  `json:"template_id,omitempty"`
+		DepartmentIDs []int64 `json:"department_ids,omitempty"`
+		Active        *bool   `json:"active,omitempty"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.assignmentService.Update(c.Request.Context(), partnerID, id, req.TemplateID, req.DepartmentIDs, req.Active); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	assignment, err := h.assignmentService.GetByID(c.Request.Context(), partnerID, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch updated assignment"})
+		return
+	}
+
+	c.JSON(http.StatusOK, assignment)
 }
 
 func (h *AssessmentAssignmentHandler) Delete(c *gin.Context) {

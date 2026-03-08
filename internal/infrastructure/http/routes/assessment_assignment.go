@@ -23,6 +23,7 @@ func (r *AssessmentAssignmentRoutes) SetupRoutes(v1 *gin.RouterGroup) {
 		assignments.POST("", r.assignmentHandler.Create)
 		assignments.GET("", r.assignmentHandler.List)
 		assignments.GET("/:id", r.assignmentHandler.GetByID)
+		assignments.PUT("/:id", r.assignmentHandler.Update)
 		assignments.POST("/:id/close", r.assignmentHandler.Close)
 		assignments.DELETE("/:id", r.assignmentHandler.Delete)
 	}

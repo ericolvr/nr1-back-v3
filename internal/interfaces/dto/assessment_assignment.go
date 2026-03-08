@@ -5,6 +5,12 @@ type CreateAssessmentAssignmentRequest struct {
 	DepartmentIDs []int64 `json:"department_ids" binding:"required,min=1"`
 }
 
+type UpdateAssessmentAssignmentRequest struct {
+	TemplateID    *int64  `json:"template_id,omitempty"`
+	DepartmentIDs []int64 `json:"department_ids,omitempty"`
+	Active        *bool   `json:"active,omitempty"`
+}
+
 type AssessmentAssignmentResponse struct {
 	ID               int64  `json:"id"`
 	PartnerID        int64  `json:"partner_id"`
