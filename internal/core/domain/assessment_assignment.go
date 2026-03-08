@@ -20,10 +20,10 @@ type AssessmentAssignment struct {
 	Data          []DepartmentData `json:"data,omitempty"`
 	Count         int              `json:"count,omitempty"`
 	Active        bool             `json:"active"`
-	StartedAt     time.Time        `json:"-"` // Não serializar
-	ClosedAt      *time.Time       `json:"-"` // Não serializar
+	StartedAt     time.Time        `json:"-"`
+	ClosedAt      *time.Time       `json:"-"`
 	CreatedAt     time.Time        `json:"created_at"`
-	UpdatedAt     time.Time        `json:"-"` // Não serializar
+	UpdatedAt     time.Time        `json:"-"`
 }
 
 type AssessmentAssignmentRepository interface {
