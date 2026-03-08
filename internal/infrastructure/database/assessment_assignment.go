@@ -75,10 +75,15 @@ func (r *AssessmentAssignmentRepository) List(ctx context.Context, partnerID, li
 		SELECT 
 			aa.id, aa.partner_id, aa.template_id, aa.department_ids, aa.active, 
 			aa.started_at, aa.closed_at, aa.created_at, aa.updated_at,
-			at.name as template_name
+			at.name as template_name,
+			COALESCE(array_agg(d.name ORDER BY d.id) FILTER (WHERE d.id IS NOT NULL), '{}') as department_names
 		FROM assessment_assignments aa
 		LEFT JOIN assessment_templates at ON aa.template_id = at.id
+		LEFT JOIN LATERAL unnest(aa.department_ids) dept_id ON true
+		LEFT JOIN departments d ON d.id = dept_id AND d.partner_id = aa.partner_id
 		WHERE aa.partner_id = $1
+		GROUP BY aa.id, aa.partner_id, aa.template_id, aa.department_ids, aa.active, 
+			aa.started_at, aa.closed_at, aa.created_at, aa.updated_at, at.name
 		ORDER BY aa.created_at DESC
 		LIMIT $2 OFFSET $3`
 
@@ -88,7 +93,7 @@ func (r *AssessmentAssignmentRepository) List(ctx context.Context, partnerID, li
 	}
 	defer rows.Close()
 
-	return r.scanAssignmentsWithTemplate(rows)
+	return r.scanAssignmentsWithDetails(rows)
 }
 
 func (r *AssessmentAssignmentRepository) ListByTemplate(ctx context.Context, partnerID, templateID int64, limit, offset int64) ([]*domain.AssessmentAssignment, error) {
@@ -207,6 +212,34 @@ func (r *AssessmentAssignmentRepository) scanAssignmentsWithTemplate(rows *sql.R
 			&qa.ID, &qa.PartnerID, &qa.TemplateID, pq.Array(&qa.DepartmentIDs), &qa.Active,
 			&qa.StartedAt, &qa.ClosedAt, &qa.CreatedAt, &qa.UpdatedAt,
 			&templateName,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if templateName.Valid {
+			qa.TemplateName = templateName.String
+		}
+
+		assignments = append(assignments, &qa)
+	}
+
+	return assignments, rows.Err()
+}
+
+func (r *AssessmentAssignmentRepository) scanAssignmentsWithDetails(rows *sql.Rows) ([]*domain.AssessmentAssignment, error) {
+	var assignments []*domain.AssessmentAssignment
+
+	for rows.Next() {
+		var qa domain.AssessmentAssignment
+		var templateName sql.NullString
+
+		err := rows.Scan(
+			&qa.ID, &qa.PartnerID, &qa.TemplateID, pq.Array(&qa.DepartmentIDs), &qa.Active,
+			&qa.StartedAt, &qa.ClosedAt, &qa.CreatedAt, &qa.UpdatedAt,
+			&templateName,
+			pq.Array(&qa.Departments),
 		)
 
 		if err != nil {
