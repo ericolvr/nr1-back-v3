@@ -28,6 +28,14 @@ type CreateActivityRequest struct {
 	CreatedByName string  `json:"created_by_name"`
 }
 
+type UpdateActivityRequest struct {
+	Type        *string `json:"type"`
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+	Status      *string `json:"status"`
+	DueDate     *string `json:"due_date"`
+}
+
 func (h *ActionPlanActivityHandler) Create(c *gin.Context) {
 	actionPlanID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -103,7 +111,7 @@ func (h *ActionPlanActivityHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var req CreateActivityRequest
+	var req UpdateActivityRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request", "details": err.Error()})
 		return
@@ -116,10 +124,19 @@ func (h *ActionPlanActivityHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// Atualizar campos
-	activity.Title = req.Title
-	activity.Description = req.Description
-	activity.Status = req.Status
+	// Atualizar apenas os campos fornecidos
+	if req.Type != nil {
+		activity.Type = *req.Type
+	}
+	if req.Title != nil {
+		activity.Title = *req.Title
+	}
+	if req.Description != nil {
+		activity.Description = *req.Description
+	}
+	if req.Status != nil {
+		activity.Status = *req.Status
+	}
 
 	if err := activity.Validate(); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Validation failed", "details": err.Error()})
