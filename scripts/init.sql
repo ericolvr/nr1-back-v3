@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS risk_metrics CASCADE;
 DROP TABLE IF EXISTS assessment_versions CASCADE;
 DROP TABLE IF EXISTS action_plan_templates CASCADE;
 DROP TABLE IF EXISTS risk_categories CASCADE;
+DROP TABLE IF EXISTS action_plan_activities CASCADE;
 DROP TABLE IF EXISTS action_plans CASCADE;
 DROP TABLE IF EXISTS invitations CASCADE;
 DROP TABLE IF EXISTS assessment_assignments CASCADE;
@@ -469,6 +470,36 @@ CREATE INDEX idx_action_plans_due_date ON action_plans(due_date);
 
 COMMENT ON TABLE action_plans IS 'Planos de ação para mitigar riscos identificados';
 COMMENT ON COLUMN action_plans.evidence_urls IS 'URLs de evidências de execução (fotos, documentos, etc)';
+
+-- ============================================
+-- ACTION PLAN ACTIVITIES (Timeline de atividades dos Action Plans)
+-- ============================================
+CREATE TABLE action_plan_activities (
+    id SERIAL PRIMARY KEY,
+    action_plan_id BIGINT NOT NULL,
+    type VARCHAR(50) NOT NULL, -- 'note', 'action', 'evidence', 'update'
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'in_progress', 'completed', 'cancelled'
+    due_date TIMESTAMP,
+    completed_at TIMESTAMP,
+    evidence_urls JSONB DEFAULT '[]',
+    created_by BIGINT,
+    created_by_name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (action_plan_id) REFERENCES action_plans(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_action_plan_activities_action_plan_id ON action_plan_activities(action_plan_id);
+CREATE INDEX idx_action_plan_activities_type ON action_plan_activities(type);
+CREATE INDEX idx_action_plan_activities_status ON action_plan_activities(status);
+CREATE INDEX idx_action_plan_activities_created_at ON action_plan_activities(created_at DESC);
+
+COMMENT ON TABLE action_plan_activities IS 'Timeline de atividades/ações dos planos de ação';
+COMMENT ON COLUMN action_plan_activities.type IS 'Tipo: note (anotação), action (ação específica), evidence (evidência), update (atualização)';
+COMMENT ON COLUMN action_plan_activities.status IS 'Status da atividade individual';
+COMMENT ON COLUMN action_plan_activities.evidence_urls IS 'URLs de evidências anexadas a esta atividade';
 
 -- ============================================
 -- SEED DATA (Opcional - Partner de Teste)
