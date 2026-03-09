@@ -845,6 +845,9 @@ func (s *AnalyticsService) replaceTemplateVariables(template string, riskCat *do
 	// Substituir {risk_level}
 	result = strings.ReplaceAll(result, "{risk_level}", riskCat.RiskLevel)
 
+	// Substituir {question_count}
+	result = strings.ReplaceAll(result, "{question_count}", fmt.Sprintf("%d", riskCat.QuestionCount))
+
 	return result
 }
 

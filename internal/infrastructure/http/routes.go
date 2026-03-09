@@ -25,6 +25,7 @@ type Router struct {
 	RiskMetricsRoutes          RouteSetup
 	AnalyticsRoutes            RouteSetup
 	ActionPlanRoutes           RouteSetup
+	ActionPlanTemplateRoutes   RouteSetup
 	AssessmentAssignmentRoutes RouteSetup
 	InvitationRoutes           RouteSetup
 	EmailRoutes                RouteSetup
@@ -89,6 +90,9 @@ func (r *Router) SetupRoutes(engine *gin.Engine) {
 		}
 		if r.ActionPlanRoutes != nil {
 			r.ActionPlanRoutes.SetupRoutes(v1)
+		}
+		if r.ActionPlanTemplateRoutes != nil {
+			r.ActionPlanTemplateRoutes.SetupRoutes(v1)
 		}
 		if r.AssessmentAssignmentRoutes != nil {
 			r.AssessmentAssignmentRoutes.SetupRoutes(v1)
