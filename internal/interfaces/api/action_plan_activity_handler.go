@@ -19,14 +19,13 @@ func NewActionPlanActivityHandler(activityRepo domain.ActionPlanActivityReposito
 }
 
 type CreateActivityRequest struct {
-	Type          string   `json:"type" binding:"required"`
-	Title         string   `json:"title" binding:"required"`
-	Description   string   `json:"description"`
-	Status        string   `json:"status"`
-	DueDate       *string  `json:"due_date"`
-	EvidenceURLs  []string `json:"evidence_urls"`
-	CreatedBy     *int64   `json:"created_by"`
-	CreatedByName string   `json:"created_by_name"`
+	Type          string  `json:"type" binding:"required"`
+	Title         string  `json:"title" binding:"required"`
+	Description   string  `json:"description"`
+	Status        string  `json:"status"`
+	DueDate       *string `json:"due_date"`
+	CreatedBy     *int64  `json:"created_by"`
+	CreatedByName string  `json:"created_by_name"`
 }
 
 func (h *ActionPlanActivityHandler) Create(c *gin.Context) {
@@ -48,7 +47,6 @@ func (h *ActionPlanActivityHandler) Create(c *gin.Context) {
 		Title:         req.Title,
 		Description:   req.Description,
 		Status:        req.Status,
-		EvidenceURLs:  req.EvidenceURLs,
 		CreatedBy:     req.CreatedBy,
 		CreatedByName: req.CreatedByName,
 	}
@@ -122,7 +120,6 @@ func (h *ActionPlanActivityHandler) Update(c *gin.Context) {
 	activity.Title = req.Title
 	activity.Description = req.Description
 	activity.Status = req.Status
-	activity.EvidenceURLs = req.EvidenceURLs
 
 	if err := activity.Validate(); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Validation failed", "details": err.Error()})
