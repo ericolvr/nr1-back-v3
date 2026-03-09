@@ -34,6 +34,7 @@ type DatabaseConfig struct {
 type AppConfig struct {
 	Environment string `json:"environment"`
 	LogLevel    string `json:"log_level"`
+	GCSBucket   string `json:"gcs_bucket"`
 }
 
 func Load() *Config {
@@ -59,6 +60,7 @@ func Load() *Config {
 		App: AppConfig{
 			Environment: getEnv("ENV", "development"),
 			LogLevel:    getEnv("LOG_LEVEL", "info"),
+			GCSBucket:   getEnv("GCS_BUCKET_NAME", "security-app-media"),
 		},
 	}
 }

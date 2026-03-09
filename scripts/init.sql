@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS risk_metrics CASCADE;
 DROP TABLE IF EXISTS assessment_versions CASCADE;
 DROP TABLE IF EXISTS action_plan_templates CASCADE;
 DROP TABLE IF EXISTS risk_categories CASCADE;
+DROP TABLE IF EXISTS activity_media CASCADE;
 DROP TABLE IF EXISTS action_plan_activities CASCADE;
 DROP TABLE IF EXISTS action_plans CASCADE;
 DROP TABLE IF EXISTS invitations CASCADE;
@@ -483,7 +484,6 @@ CREATE TABLE action_plan_activities (
     status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'in_progress', 'completed', 'cancelled'
     due_date TIMESTAMP,
     completed_at TIMESTAMP,
-    evidence_urls JSONB DEFAULT '[]',
     created_by BIGINT,
     created_by_name VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -499,7 +499,25 @@ CREATE INDEX idx_action_plan_activities_created_at ON action_plan_activities(cre
 COMMENT ON TABLE action_plan_activities IS 'Timeline de atividades/ações dos planos de ação';
 COMMENT ON COLUMN action_plan_activities.type IS 'Tipo: note (anotação), action (ação específica), evidence (evidência), update (atualização)';
 COMMENT ON COLUMN action_plan_activities.status IS 'Status da atividade individual';
-COMMENT ON COLUMN action_plan_activities.evidence_urls IS 'URLs de evidências anexadas a esta atividade';
+
+-- ============================================
+-- ACTIVITY MEDIA (Mídias/anexos das atividades)
+-- ============================================
+CREATE TABLE activity_media (
+    id SERIAL PRIMARY KEY,
+    activity_id BIGINT NOT NULL,
+    media_url TEXT NOT NULL,
+    media_type VARCHAR(50) NOT NULL CHECK (media_type IN ('photo', 'video', 'document')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (activity_id) REFERENCES action_plan_activities(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_activity_media_activity_id ON activity_media(activity_id);
+CREATE INDEX idx_activity_media_created_at ON activity_media(created_at);
+
+COMMENT ON TABLE activity_media IS 'Armazena mídias/anexos de atividades (fotos, vídeos, documentos) no Google Cloud Storage';
+COMMENT ON COLUMN activity_media.media_url IS 'URL da mídia armazenada no GCS';
+COMMENT ON COLUMN activity_media.media_type IS 'Tipo: photo, video ou document';
 
 -- ============================================
 -- SEED DATA (Opcional - Partner de Teste)

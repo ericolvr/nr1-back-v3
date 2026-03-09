@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -10,6 +11,7 @@ import (
 	httpServer "github.com/ericolvr/sec-back-v2/internal/infrastructure/http"
 	"github.com/ericolvr/sec-back-v2/internal/infrastructure/http/routes"
 	"github.com/ericolvr/sec-back-v2/internal/infrastructure/sms"
+	"github.com/ericolvr/sec-back-v2/internal/infrastructure/storage"
 	"github.com/ericolvr/sec-back-v2/internal/interfaces/api"
 	"github.com/joho/godotenv"
 )
@@ -38,6 +40,7 @@ func main() {
 	actionPlanRepo := database.NewActionPlanRepository(db)
 	actionPlanTemplateRepo := database.NewActionPlanTemplateRepository(db)
 	actionPlanActivityRepo := database.NewActionPlanActivityRepository(db)
+	activityMediaRepo := database.NewActivityMediaRepository(db)
 	riskCategoryRepo := database.NewRiskCategoryRepository(db)
 	formulaRepo := database.NewCalculationFormulaRepository(db)
 	reportRepo := database.NewAnalyticsReportRepository(db)
@@ -45,6 +48,17 @@ func main() {
 	riskMetricsRepo := database.NewRiskMetricsRepository(db)
 	versionRepo := database.NewAssessmentVersionRepository(db)
 	invitationRepo := database.NewInvitationRepository(db)
+
+	// Storage Client (Google Cloud Storage)
+	ctx := context.Background()
+	storageClient, err := storage.NewStorageClient(ctx, cfg.App.GCSBucket)
+	if err != nil {
+		log.Printf("Warning: Failed to initialize storage client: %v", err)
+		log.Printf("Upload de arquivos não estará disponível")
+	}
+	if storageClient != nil {
+		defer storageClient.Close()
+	}
 
 	// Services
 	smsProvider := sms.NewTwilioProvider()
@@ -113,6 +127,7 @@ func main() {
 	actionPlanHandler := api.NewActionPlanHandler(actionPlanService)
 	actionPlanTemplateHandler := api.NewActionPlanTemplateHandler(actionPlanTemplateRepo)
 	actionPlanActivityHandler := api.NewActionPlanActivityHandler(actionPlanActivityRepo)
+	activityMediaHandler := api.NewActivityMediaHandler(activityMediaRepo, storageClient)
 	companyHandler := api.NewCompanyHandler(companyService)
 	partnerHandler := api.NewPartnerHandler(partnerService)
 	templateHandler := api.NewAssessmentTemplateHandler(templateService)
@@ -135,6 +150,7 @@ func main() {
 	router.ActionPlanRoutes = routes.NewActionPlanRoutes(actionPlanHandler, actionPlanActivityHandler)
 	router.ActionPlanTemplateRoutes = routes.NewActionPlanTemplateRoutes(actionPlanTemplateHandler)
 	router.ActionPlanActivityRoutes = routes.NewActionPlanActivityRoutes(actionPlanActivityHandler)
+	router.ActivityMediaRoutes = routes.NewActivityMediaRoutes(activityMediaHandler)
 	router.CompanyRoutes = routes.NewCompanyRoutes(companyHandler)
 	router.PartnerRoutes = routes.NewPartnerRoutes(partnerHandler)
 	router.AssessmentTemplateRoutes = routes.NewAssessmentTemplateRoutes(templateHandler, versionHandler, questionHandler)
