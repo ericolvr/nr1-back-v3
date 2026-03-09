@@ -126,6 +126,7 @@ func main() {
 		departmentRepo,
 		companyRepo,
 		partnerRepo,
+		actionPlanRepo,
 	)
 
 	emailService := services.NewEmailService()

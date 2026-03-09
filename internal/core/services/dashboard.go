@@ -13,6 +13,7 @@ type DashboardService struct {
 	departmentRepo      domain.DepartmentRepository
 	companyRepo         domain.CompanyRepository
 	partnerRepo         domain.PartnerRepository
+	actionPlanRepo      domain.ActionPlanRepository
 }
 
 func NewDashboardService(
@@ -22,6 +23,7 @@ func NewDashboardService(
 	departmentRepo domain.DepartmentRepository,
 	companyRepo domain.CompanyRepository,
 	partnerRepo domain.PartnerRepository,
+	actionPlanRepo domain.ActionPlanRepository,
 ) *DashboardService {
 	return &DashboardService{
 		analyticsService:    analyticsService,
@@ -30,6 +32,7 @@ func NewDashboardService(
 		departmentRepo:      departmentRepo,
 		companyRepo:         companyRepo,
 		partnerRepo:         partnerRepo,
+		actionPlanRepo:      actionPlanRepo,
 	}
 }
 
@@ -237,4 +240,191 @@ func (s *DashboardService) GetDepartmentDashboard(ctx context.Context, partnerID
 		RiskCategories:   []*domain.RiskCategorySummary{}, // TODO: Implementar
 		Alerts:           alerts,
 	}, nil
+}
+
+// GetGlobalDashboard retorna dashboard global/overview para gestor de RH
+func (s *DashboardService) GetGlobalDashboard(ctx context.Context, partnerID, companyID int64) (*domain.GlobalDashboard, error) {
+	// 1. Buscar company
+	company, err := s.companyRepo.GetByID(ctx, partnerID, companyID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Buscar templates em andamento
+	inProgressTemplates, err := s.analyticsService.GetInProgressTemplates(ctx, partnerID, companyID)
+	if err != nil {
+		inProgressTemplates = []*domain.TemplateInProgress{}
+	}
+
+	// 3. Calcular métricas principais
+	metrics := s.calculateGlobalMetrics(inProgressTemplates)
+
+	// 4. Montar overview de departamentos
+	departmentsOverview := s.buildDepartmentsOverview(inProgressTemplates)
+
+	// 5. Calcular alertas
+	alerts := s.calculateDashboardAlerts(departmentsOverview, partnerID, companyID)
+
+	// 6. Calcular resumo rápido
+	quickSummary := s.calculateQuickSummary(ctx, partnerID, companyID, departmentsOverview)
+
+	return &domain.GlobalDashboard{
+		CompanyID:           companyID,
+		CompanyName:         company.Name,
+		Metrics:             metrics,
+		DepartmentsOverview: departmentsOverview,
+		Alerts:              alerts,
+		QuickSummary:        quickSummary,
+	}, nil
+}
+
+// calculateGlobalMetrics calcula as métricas principais do dashboard
+func (s *DashboardService) calculateGlobalMetrics(templates []*domain.TemplateInProgress) *domain.GlobalMetrics {
+	totalActiveAssessments := len(templates)
+
+	var totalResponseRate float64
+	var departmentsAtRisk int
+	overallRiskLevel := "low"
+
+	for _, template := range templates {
+		// Calcular taxa de resposta média
+		if template.TotalEmployees > 0 {
+			totalResponseRate += float64(template.CompletedResponses) / float64(template.TotalEmployees) * 100
+		}
+
+		// Contar departamentos em risco
+		departmentsAtRisk += template.DepartmentsWithHighRisk + template.DepartmentsWithMediumRisk
+
+		// Determinar risco geral
+		if template.OverallRiskLevel == "high" {
+			overallRiskLevel = "high"
+		} else if template.OverallRiskLevel == "medium" && overallRiskLevel != "high" {
+			overallRiskLevel = "medium"
+		}
+	}
+
+	// Calcular média da taxa de resposta
+	avgResponseRate := 0.0
+	if len(templates) > 0 {
+		avgResponseRate = totalResponseRate / float64(len(templates))
+	}
+
+	return &domain.GlobalMetrics{
+		ActiveAssessments:      totalActiveAssessments,
+		ActiveAssessmentsDelta: 0, // TODO: Implementar comparação com período anterior
+		OverallResponseRate:    avgResponseRate,
+		ResponseRateDelta:      0, // TODO: Implementar comparação com período anterior
+		OverallRiskLevel:       overallRiskLevel,
+		DepartmentsAtRisk:      departmentsAtRisk,
+		DepartmentsAtRiskDelta: 0, // TODO: Implementar comparação com período anterior
+	}
+}
+
+// buildDepartmentsOverview monta overview de departamentos
+func (s *DashboardService) buildDepartmentsOverview(templates []*domain.TemplateInProgress) []*domain.DepartmentOverview {
+	var overview []*domain.DepartmentOverview
+
+	for _, template := range templates {
+		for _, dept := range template.Departments {
+			overview = append(overview, &domain.DepartmentOverview{
+				DepartmentID:   dept.DepartmentID,
+				DepartmentName: dept.DepartmentName,
+				ResponseRate:   dept.ResponseRate,
+				TotalEmployees: dept.TotalEmployees,
+				Responded:      dept.CompletedResponses,
+				RiskLevel:      dept.RiskLevel,
+				Status:         s.determineDepartmentStatus(dept),
+				CanClose:       dept.CanClose,
+				TemplateID:     template.ID,
+				TemplateName:   template.Name,
+				AverageScore:   dept.AverageScore,
+				Reliability:    dept.Reliability,
+			})
+		}
+	}
+
+	return overview
+}
+
+// determineDepartmentStatus determina o status do departamento
+func (s *DashboardService) determineDepartmentStatus(dept *domain.DepartmentStatus) string {
+	if !dept.IsActive {
+		return "closed"
+	}
+	if dept.CanClose {
+		return "can_close"
+	}
+	return "in_progress"
+}
+
+// calculateDashboardAlerts calcula alertas e ações necessárias
+func (s *DashboardService) calculateDashboardAlerts(departments []*domain.DepartmentOverview, partnerID, companyID int64) *domain.DashboardAlerts {
+	alerts := &domain.DashboardAlerts{
+		CanCloseList:    []string{},
+		MediumRiskList:  []string{},
+		HighRiskList:    []string{},
+		LowResponseList: []string{},
+	}
+
+	for _, dept := range departments {
+		// Departamentos que podem encerrar
+		if dept.CanClose {
+			alerts.CanCloseCount++
+			alerts.CanCloseList = append(alerts.CanCloseList, dept.DepartmentName)
+		}
+
+		// Departamentos com risco médio
+		if dept.RiskLevel == "medium" {
+			alerts.MediumRiskCount++
+			alerts.MediumRiskList = append(alerts.MediumRiskList, dept.DepartmentName)
+		}
+
+		// Departamentos com risco alto
+		if dept.RiskLevel == "high" {
+			alerts.HighRiskCount++
+			alerts.HighRiskList = append(alerts.HighRiskList, dept.DepartmentName)
+		}
+
+		// Departamentos com baixa resposta (<30%)
+		if dept.ResponseRate < 30 {
+			alerts.LowResponseCount++
+			alerts.LowResponseList = append(alerts.LowResponseList, dept.DepartmentName)
+		}
+	}
+
+	// TODO: Buscar action plans pendentes e atrasados
+	alerts.PendingActionPlans = 0
+	alerts.OverdueActionPlans = 0
+
+	return alerts
+}
+
+// calculateQuickSummary calcula resumo rápido
+func (s *DashboardService) calculateQuickSummary(ctx context.Context, partnerID, companyID int64, departments []*domain.DepartmentOverview) *domain.QuickSummary {
+	summary := &domain.QuickSummary{
+		TotalDepartments: len(departments),
+	}
+
+	var totalEmployees, employeesResponded int
+
+	for _, dept := range departments {
+		totalEmployees += int(dept.TotalEmployees)
+		employeesResponded += int(dept.Responded)
+
+		if dept.Status == "in_progress" || dept.Status == "can_close" {
+			summary.DepartmentsInProgress++
+		} else if dept.Status == "closed" {
+			summary.DepartmentsCompleted++
+		}
+	}
+
+	summary.TotalEmployees = totalEmployees
+	summary.EmployeesResponded = employeesResponded
+	summary.EmployeesPending = totalEmployees - employeesResponded
+
+	// TODO: Buscar action plans ativos e concluídos
+	summary.ActiveActionPlans = 0
+	summary.CompletedActionPlans = 0
+
+	return summary
 }

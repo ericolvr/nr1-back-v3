@@ -86,3 +86,26 @@ func (h *DashboardHandler) GetDepartmentDashboard(c *gin.Context) {
 
 	c.JSON(http.StatusOK, dashboard)
 }
+
+// GetGlobalDashboard retorna dashboard global/overview para gestor de RH
+func (h *DashboardHandler) GetGlobalDashboard(c *gin.Context) {
+	partnerID, err := strconv.ParseInt(c.GetHeader("X-Partner-ID"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid partner ID"})
+		return
+	}
+
+	companyID, err := strconv.ParseInt(c.Param("companyId"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid company ID"})
+		return
+	}
+
+	dashboard, err := h.dashboardService.GetGlobalDashboard(c.Request.Context(), partnerID, companyID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get global dashboard", "details": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dashboard)
+}

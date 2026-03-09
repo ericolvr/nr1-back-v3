@@ -20,12 +20,15 @@ func (r *DashboardRoutes) SetupRoutes(v1 *gin.RouterGroup) {
 	dashboard := v1.Group("/dashboard")
 	dashboard.Use(middleware.PartnerMiddleware())
 	{
+		// Dashboard Global (overview para gestor de RH)
+		dashboard.GET("/global/:companyId", r.handler.GetGlobalDashboard)
+
 		// Dashboard do Partner (consultoria)
 		dashboard.GET("/partner", r.handler.GetPartnerDashboard)
-		
+
 		// Dashboard da Company (gestor)
 		dashboard.GET("/company/:companyId", r.handler.GetCompanyDashboard)
-		
+
 		// Dashboard do Department (supervisor)
 		dashboard.GET("/company/:companyId/department/:departmentId", r.handler.GetDepartmentDashboard)
 	}

@@ -121,3 +121,74 @@ type ActionPlanSummary struct {
 	Status    string `json:"status"`
 	IsOverdue bool   `json:"is_overdue"`
 }
+
+// GlobalDashboard representa o dashboard global/overview para gestor de RH
+type GlobalDashboard struct {
+	CompanyID   int64  `json:"company_id"`
+	CompanyName string `json:"company_name"`
+
+	// KPIs principais
+	Metrics *GlobalMetrics `json:"metrics"`
+
+	// Departamentos em avaliação
+	DepartmentsOverview []*DepartmentOverview `json:"departments_overview"`
+
+	// Alertas e ações necessárias
+	Alerts *DashboardAlerts `json:"alerts"`
+
+	// Resumo rápido
+	QuickSummary *QuickSummary `json:"quick_summary"`
+}
+
+// GlobalMetrics representa as métricas principais do dashboard
+type GlobalMetrics struct {
+	ActiveAssessments      int     `json:"active_assessments"`       // Total de avaliações ativas
+	ActiveAssessmentsDelta int     `json:"active_assessments_delta"` // Variação vs período anterior
+	OverallResponseRate    float64 `json:"overall_response_rate"`    // Taxa de resposta global (%)
+	ResponseRateDelta      float64 `json:"response_rate_delta"`      // Variação vs período anterior
+	OverallRiskLevel       string  `json:"overall_risk_level"`       // low/medium/high
+	DepartmentsAtRisk      int     `json:"departments_at_risk"`      // Departamentos com risco médio/alto
+	DepartmentsAtRiskDelta int     `json:"departments_at_risk_delta"`
+}
+
+// DepartmentOverview representa visão geral de um departamento
+type DepartmentOverview struct {
+	DepartmentID   int64   `json:"department_id"`
+	DepartmentName string  `json:"department_name"`
+	ResponseRate   float64 `json:"response_rate"`   // % de respostas
+	TotalEmployees int64   `json:"total_employees"` // Total de funcionários
+	Responded      int64   `json:"responded"`       // Já responderam
+	RiskLevel      string  `json:"risk_level"`      // low/medium/high
+	Status         string  `json:"status"`          // in_progress/can_close/closed
+	CanClose       bool    `json:"can_close"`       // Pode encerrar?
+	TemplateID     int64   `json:"template_id"`     // ID do template em avaliação
+	TemplateName   string  `json:"template_name"`   // Nome do template
+	AverageScore   float64 `json:"average_score"`   // Score médio (0-5)
+	Reliability    string  `json:"reliability"`     // poor/acceptable/good/excellent
+}
+
+// DashboardAlerts representa alertas e ações necessárias
+type DashboardAlerts struct {
+	CanCloseCount      int      `json:"can_close_count"`      // Departamentos que podem encerrar
+	CanCloseList       []string `json:"can_close_list"`       // Lista de nomes
+	MediumRiskCount    int      `json:"medium_risk_count"`    // Departamentos com risco médio
+	MediumRiskList     []string `json:"medium_risk_list"`     // Lista de nomes
+	HighRiskCount      int      `json:"high_risk_count"`      // Departamentos com risco alto
+	HighRiskList       []string `json:"high_risk_list"`       // Lista de nomes
+	LowResponseCount   int      `json:"low_response_count"`   // Departamentos com baixa resposta (<30%)
+	LowResponseList    []string `json:"low_response_list"`    // Lista de nomes
+	PendingActionPlans int      `json:"pending_action_plans"` // Planos de ação pendentes
+	OverdueActionPlans int      `json:"overdue_action_plans"` // Planos de ação atrasados
+}
+
+// QuickSummary representa resumo rápido de informações
+type QuickSummary struct {
+	TotalDepartments      int `json:"total_departments"`       // Total de departamentos
+	DepartmentsInProgress int `json:"departments_in_progress"` // Em avaliação
+	DepartmentsCompleted  int `json:"departments_completed"`   // Avaliações concluídas
+	TotalEmployees        int `json:"total_employees"`         // Total de funcionários
+	EmployeesResponded    int `json:"employees_responded"`     // Já responderam
+	EmployeesPending      int `json:"employees_pending"`       // Pendentes
+	ActiveActionPlans     int `json:"active_action_plans"`     // Planos de ação ativos
+	CompletedActionPlans  int `json:"completed_action_plans"`  // Planos de ação concluídos
+}
