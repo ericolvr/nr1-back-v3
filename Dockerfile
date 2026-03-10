@@ -1,11 +1,9 @@
-FROM golang:1.23-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /src
 
-ENV GOTOOLCHAIN=go1.23.12
-
 COPY go.mod go.sum ./
-RUN go version && go mod download -x
+RUN go mod download
 
 COPY . .
 
