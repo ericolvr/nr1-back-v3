@@ -17,7 +17,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Sanitize project variables
+      - name: Sanitize and validate project variables
         id: sanitize
         run: |
           PROJECT_ID=$(echo "${{ vars.GCP_PROJECT_ID }}" | tr -d '\n\r' | xargs)
@@ -26,9 +26,7 @@ jobs:
           echo "REGION=$REGION" >> $GITHUB_ENV
           echo "Sanitized PROJECT_ID: [$PROJECT_ID]"
           echo "Sanitized REGION: [$REGION]"
-
-      - name: Validate required GitHub Variables
-        run: |
+          
           missing=""
           [ -z "$PROJECT_ID" ] && missing="$missing GCP_PROJECT_ID"
           [ -z "$REGION" ] && missing="$missing GCP_REGION"
