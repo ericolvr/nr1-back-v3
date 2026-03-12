@@ -26,9 +26,16 @@ func NewTwilioProvider() *TwilioProvider {
 
 	if accountSID == "" || authToken == "" {
 		fmt.Printf("[TWILIO] ⚠️  Credenciais não configuradas - SMS será desabilitado\n")
+		return &TwilioProvider{
+			client: nil,
+			from:   from,
+		}
 	}
 
-	client := twilio.NewRestClient()
+	client := twilio.NewRestClientWithParams(twilio.ClientParams{
+		Username: accountSID,
+		Password: authToken,
+	})
 
 	return &TwilioProvider{
 		client: client,
@@ -41,10 +48,12 @@ func (t *TwilioProvider) SendSMS(message domain.SMSMessage) error {
 		return fmt.Errorf("Twilio client not initialized")
 	}
 
+	formattedPhone := t.FormatPhoneNumber(message.To)
+
 	params := &api.CreateMessageParams{}
 	params.SetBody(message.Message)
 	params.SetFrom(t.from)
-	params.SetTo(message.To)
+	params.SetTo(formattedPhone)
 
 	resp, err := t.client.Api.CreateMessage(params)
 	if err != nil {
