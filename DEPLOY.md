@@ -295,3 +295,6 @@ gcloud sql connect nr1-back-db --user=nr1_back_user --database=nr1_back_producti
 - **Secret Manager**: $0.06 por 10.000 acessos
 
 **Total estimado**: ~$10-15/mês para ambiente de desenvolvimento/teste.
+
+
+####
