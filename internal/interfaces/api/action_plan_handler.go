@@ -12,11 +12,13 @@ import (
 
 type ActionPlanHandler struct {
 	actionPlanService *services.ActionPlanService
+	departmentRepo    domain.DepartmentRepository
 }
 
-func NewActionPlanHandler(actionPlanService *services.ActionPlanService) *ActionPlanHandler {
+func NewActionPlanHandler(actionPlanService *services.ActionPlanService, departmentRepo domain.DepartmentRepository) *ActionPlanHandler {
 	return &ActionPlanHandler{
 		actionPlanService: actionPlanService,
+		departmentRepo:    departmentRepo,
 	}
 }
 
@@ -24,8 +26,8 @@ func (h *ActionPlanHandler) Create(c *gin.Context) {
 	partnerID := c.GetInt64("partner_id")
 
 	var req struct {
-		CompanyID       int64    `json:"company_id" binding:"required"`
-		TemplateID int64    `json:"template_id" binding:"required"`
+		CompanyID       *int64   `json:"company_id"`
+		TemplateID      int64    `json:"template_id" binding:"required"`
 		DepartmentID    int64    `json:"department_id" binding:"required"`
 		SnapshotID      *int64   `json:"snapshot_id"`
 		Title           string   `json:"title" binding:"required"`
@@ -46,6 +48,19 @@ func (h *ActionPlanHandler) Create(c *gin.Context) {
 		return
 	}
 
+	// Buscar company_id do departamento se não foi fornecido
+	var companyID int64
+	if req.CompanyID != nil {
+		companyID = *req.CompanyID
+	} else {
+		department, err := h.departmentRepo.GetByID(c.Request.Context(), partnerID, req.DepartmentID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Department not found"})
+			return
+		}
+		companyID = department.CompanyID
+	}
+
 	var dueDate *time.Time
 	if req.DueDate != nil && *req.DueDate != "" {
 		parsed, err := time.Parse("2006-01-02", *req.DueDate)
@@ -62,8 +77,8 @@ func (h *ActionPlanHandler) Create(c *gin.Context) {
 
 	actionPlan := &domain.ActionPlan{
 		PartnerID:       partnerID,
-		CompanyID:       req.CompanyID,
-		TemplateID: req.TemplateID,
+		CompanyID:       companyID,
+		TemplateID:      req.TemplateID,
 		DepartmentID:    req.DepartmentID,
 		SnapshotID:      req.SnapshotID,
 		Title:           req.Title,

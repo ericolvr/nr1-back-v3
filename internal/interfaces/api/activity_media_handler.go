@@ -35,6 +35,12 @@ func (h *ActivityMediaHandler) Upload(c *gin.Context) {
 		return
 	}
 
+	// Verificar se storage client está disponível
+	if h.storageClient == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Storage service not available. Please configure GCS credentials."})
+		return
+	}
+
 	// Receber arquivo do form
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
@@ -70,11 +76,14 @@ func (h *ActivityMediaHandler) Upload(c *gin.Context) {
 
 	// Upload para Google Cloud Storage
 	ctx := context.Background()
+	fmt.Printf("🔄 [UPLOAD] Uploading file: %s (size: %d bytes)\n", objectName, len(fileBytes))
 	mediaURL, err := h.storageClient.UploadFile(ctx, objectName, fileBytes, header.Header.Get("Content-Type"))
 	if err != nil {
+		fmt.Printf("❌ [UPLOAD ERROR] Failed to upload: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload file", "details": err.Error()})
 		return
 	}
+	fmt.Printf("✅ [UPLOAD] File uploaded successfully: %s\n", mediaURL)
 
 	// Criar registro no banco
 	media := &domain.ActivityMedia{

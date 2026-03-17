@@ -4,17 +4,20 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/ericolvr/sec-back-v2/internal/core/domain"
 	"github.com/ericolvr/sec-back-v2/internal/core/services"
 	"github.com/gin-gonic/gin"
 )
 
 type AnalyticsHandler struct {
 	analyticsService *services.AnalyticsService
+	departmentRepo   domain.DepartmentRepository
 }
 
-func NewAnalyticsHandler(analyticsService *services.AnalyticsService) *AnalyticsHandler {
+func NewAnalyticsHandler(analyticsService *services.AnalyticsService, departmentRepo domain.DepartmentRepository) *AnalyticsHandler {
 	return &AnalyticsHandler{
 		analyticsService: analyticsService,
+		departmentRepo:   departmentRepo,
 	}
 }
 
@@ -46,13 +49,16 @@ func (h *AnalyticsHandler) CreateSnapshot(c *gin.Context) {
 	}
 
 	// Buscar company_id do departamento
-	// TODO: implementar busca real do company_id
-	companyID := int64(1)
+	department, err := h.departmentRepo.GetByID(c.Request.Context(), partnerID, departmentID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Department not found"})
+		return
+	}
 
 	snapshot, err := h.analyticsService.CreateSnapshot(
 		c.Request.Context(),
 		partnerID,
-		companyID,
+		department.CompanyID,
 		departmentID,
 		templateID,
 		nil, // created_by
