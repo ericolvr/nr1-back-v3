@@ -224,7 +224,7 @@ func (s *DashboardService) GetPartnerDashboard(ctx context.Context, partnerID in
 		if departmentsAtHighRisk > 1 && departmentsAtHighRisk > len(departments)/2 {
 			companyRiskLevel = "high"
 			companiesAtRisk++
-			alerts = append(alerts, company.Name+": múltiplos departamentos em risco alto")
+			alerts = append(alerts, company.Name+": departamentos em risco alto")
 		} else if departmentsAtHighRisk > 0 {
 			companyRiskLevel = "high"
 			companiesAtRisk++
