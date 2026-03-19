@@ -38,7 +38,7 @@ Você pode seguir:
 
 ### 3. Habilitar APIs Necessárias
 ```bash
-# Habilitar todas as APIs de uma vez
+
 gcloud services enable \
     cloudbuild.googleapis.com \
     run.googleapis.com \
