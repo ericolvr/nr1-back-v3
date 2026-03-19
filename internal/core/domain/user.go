@@ -44,7 +44,7 @@ func (u *User) Validate() error {
 	if u.Mobile == "" {
 		return errors.New("mobile is required")
 	}
-	if u.Type < 1 || u.Type > 2 {
+	if u.Type < 1 || u.Type > 3 {
 		return errors.New("type must be 1 (admin) or 2 (client)")
 	}
 	return nil
