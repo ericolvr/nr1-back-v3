@@ -84,17 +84,19 @@ func (s *AnalyticsService) GetDepartmentReport(ctx context.Context, partnerID, c
 		return nil, errors.New("questionnaire not found")
 	}
 
-	// 4. Buscar configurações do partner (para critério de fechamento)
+	// 4. Buscar fórmula ativa para thresholds
+	formula, err := s.formulaRepo.GetActive(ctx, partnerID)
+	if err != nil || formula == nil {
+		formula = domain.DefaultCalculationFormula(partnerID)
+	}
+
+	// 5. Buscar configurações do partner (para critério de fechamento)
 	settings, err := s.settingsRepo.GetByPartnerID(ctx, partnerID)
 	if err != nil {
-		formula, _ := s.formulaRepo.GetActive(ctx, partnerID)
-		if formula == nil {
-			formula = domain.DefaultCalculationFormula(partnerID)
-		}
 		settings = domain.DefaultPartnerSettings(partnerID, formula)
 	}
 
-	// 5. Determinar se pode fechar
+	// 6. Determinar se pode fechar
 	canClose := metrics.ResponseRate >= settings.MinResponseRateToClose && metrics.CanCalculateRisk
 	canCloseReason := ""
 	if !canClose {
@@ -133,6 +135,11 @@ func (s *AnalyticsService) GetDepartmentReport(ctx context.Context, partnerID, c
 		CanCloseReason:       canCloseReason,
 		RiskCategories:       riskCategories,
 		ActionPlansCount:     actionPlansCount,
+		ReliabilityThresholds: &domain.ReliabilityThresholds{
+			AcceptableMin: formula.ReliabilityAcceptableMin,
+			GoodMin:       formula.ReliabilityGoodMin,
+			ExcellentMin:  formula.ReliabilityExcellentMin,
+		},
 	}
 
 	// 9. Adicionar warning se necessário
@@ -332,7 +339,13 @@ func (s *AnalyticsService) GetPartnerReport(ctx context.Context, partnerID int64
 
 // GetInProgressTemplates retorna todos os templates em andamento de uma empresa
 func (s *AnalyticsService) GetInProgressTemplates(ctx context.Context, partnerID, companyID int64) ([]*domain.TemplateInProgress, error) {
-	// 1. Buscar assignments ativos
+	// 1. Buscar fórmula ativa para thresholds
+	formula, err := s.formulaRepo.GetActive(ctx, partnerID)
+	if err != nil || formula == nil {
+		formula = domain.DefaultCalculationFormula(partnerID)
+	}
+
+	// 2. Buscar assignments ativos
 	assignments, err := s.assignmentRepo.List(ctx, partnerID, 1000, 0)
 	if err != nil {
 		return nil, err
@@ -340,10 +353,6 @@ func (s *AnalyticsService) GetInProgressTemplates(ctx context.Context, partnerID
 
 	settings, _ := s.settingsRepo.GetByPartnerID(ctx, partnerID)
 	if settings == nil {
-		formula, _ := s.formulaRepo.GetActive(ctx, partnerID)
-		if formula == nil {
-			formula = domain.DefaultCalculationFormula(partnerID)
-		}
 		settings = domain.DefaultPartnerSettings(partnerID, formula)
 	}
 
@@ -414,6 +423,11 @@ func (s *AnalyticsService) GetInProgressTemplates(ctx context.Context, partnerID
 					IsActive:           true,
 					CanClose:           false,
 					CanCloseReason:     "Nenhuma resposta ainda",
+					ReliabilityThresholds: &domain.ReliabilityThresholds{
+						AcceptableMin: formula.ReliabilityAcceptableMin,
+						GoodMin:       formula.ReliabilityGoodMin,
+						ExcellentMin:  formula.ReliabilityExcellentMin,
+					},
 				}
 				qip.Departments = append(qip.Departments, deptStatus)
 				qip.DepartmentsNotStarted++
@@ -463,6 +477,11 @@ func (s *AnalyticsService) GetInProgressTemplates(ctx context.Context, partnerID
 				IsActive:           true,
 				CanClose:           canClose,
 				CanCloseReason:     canCloseReason,
+				ReliabilityThresholds: &domain.ReliabilityThresholds{
+					AcceptableMin: formula.ReliabilityAcceptableMin,
+					GoodMin:       formula.ReliabilityGoodMin,
+					ExcellentMin:  formula.ReliabilityExcellentMin,
+				},
 			}
 
 			qip.Departments = append(qip.Departments, deptStatus)

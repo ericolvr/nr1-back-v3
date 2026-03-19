@@ -2,6 +2,13 @@ package domain
 
 import "time"
 
+// ReliabilityThresholds representa os thresholds de confiabilidade da fórmula ativa
+type ReliabilityThresholds struct {
+	AcceptableMin float64 `json:"acceptable_min"` // Mínimo aceitável (ex: 30%)
+	GoodMin       float64 `json:"good_min"`       // Bom (ex: 50%)
+	ExcellentMin  float64 `json:"excellent_min"`  // Excelente (ex: 70%)
+}
+
 // DepartmentAnalytics representa o relatório detalhado de um departamento
 type DepartmentAnalytics struct {
 	DepartmentID         int64   `json:"department_id"`
@@ -19,6 +26,9 @@ type DepartmentAnalytics struct {
 	CanClose             bool    `json:"can_close"`
 	CanCloseReason       string  `json:"can_close_reason,omitempty"`
 	Warning              string  `json:"warning,omitempty"`
+
+	// Thresholds de confiabilidade (da fórmula ativa)
+	ReliabilityThresholds *ReliabilityThresholds `json:"reliability_thresholds,omitempty"`
 
 	// Riscos por categoria
 	RiskCategories []*RiskCategorySummary `json:"risk_categories,omitempty"`
@@ -62,6 +72,9 @@ type DepartmentSummary struct {
 	CanClose             bool    `json:"can_close"`
 	CanCloseReason       string  `json:"can_close_reason,omitempty"`
 	Warning              string  `json:"warning,omitempty"`
+
+	// Thresholds de confiabilidade (da fórmula ativa)
+	ReliabilityThresholds *ReliabilityThresholds `json:"reliability_thresholds,omitempty"`
 }
 
 // PartnerAnalytics representa o relatório consolidado do Partner (visão geral)

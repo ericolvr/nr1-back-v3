@@ -55,6 +55,9 @@ type DepartmentStatus struct {
 	IsActive           bool    `json:"is_active"`
 	CanClose           bool    `json:"can_close"`
 	CanCloseReason     string  `json:"can_close_reason,omitempty"`
+
+	// Thresholds de confiabilidade (da fórmula ativa)
+	ReliabilityThresholds *ReliabilityThresholds `json:"reliability_thresholds,omitempty"`
 }
 
 // PartnerDashboard representa o dashboard para consultoria (Partner)
