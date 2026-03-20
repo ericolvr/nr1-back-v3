@@ -132,6 +132,7 @@ func main() {
 	)
 
 	emailService := services.NewEmailService()
+	whatsappService := services.NewWhatsAppService()
 
 	// Handlers
 	answerHandler := api.NewAnswerHandler(answerService, submissionService)
@@ -151,7 +152,7 @@ func main() {
 	versionHandler := api.NewAssessmentVersionHandler(versionService)
 	submissionHandler := api.NewEmployeeSubmissionHandler(submissionService)
 	assignmentHandler := api.NewAssessmentAssignmentHandler(assignmentService)
-	invitationHandler := api.NewInvitationHandler(invitationService, assignmentService, submissionService, emailService)
+	invitationHandler := api.NewInvitationHandler(invitationService, assignmentService, submissionService, emailService, whatsappService, employeeRepo)
 	emailHandler := api.NewEmailHandler(emailService)
 	surveyHandler := api.NewSurveyHandler(submissionService, questionService, templateService)
 	calculationFormulaHandler := api.NewCalculationFormulaHandler(calculationFormulaService)

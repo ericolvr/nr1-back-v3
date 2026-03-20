@@ -18,6 +18,8 @@ type InvitationHandler struct {
 	assignmentService *services.AssessmentAssignmentService
 	submissionService *services.EmployeeSubmissionService
 	emailService      *services.EmailService
+	whatsappService   *services.WhatsAppService
+	employeeRepo      domain.EmployeeRepository
 }
 
 func NewInvitationHandler(
@@ -25,12 +27,16 @@ func NewInvitationHandler(
 	assignmentService *services.AssessmentAssignmentService,
 	submissionService *services.EmployeeSubmissionService,
 	emailService *services.EmailService,
+	whatsappService *services.WhatsAppService,
+	employeeRepo domain.EmployeeRepository,
 ) *InvitationHandler {
 	return &InvitationHandler{
 		invitationService: invitationService,
 		assignmentService: assignmentService,
 		submissionService: submissionService,
 		emailService:      emailService,
+		whatsappService:   whatsappService,
+		employeeRepo:      employeeRepo,
 	}
 }
 
@@ -298,23 +304,64 @@ func (h *InvitationHandler) SendAllInvitations(c *gin.Context) {
 			// Usar o token diretamente da invitation
 			surveyURL := fmt.Sprintf("%s/survey?token=%s", frontendURL, inv.Token)
 
-			// Enviar email
-			fmt.Printf("   📧 Enviando para %s...\n", inv.EmployeeEmail)
-			err := h.emailService.SendInvitation(
-				inv.EmployeeEmail,
-				assignment.TemplateName,
-				inv.Token,
-				surveyURL,
-			)
+			emailSuccess := false
+			whatsappSuccess := false
 
-			if err != nil {
-				failedCount++
-				fmt.Printf("   ❌ Falha ao enviar para %s: %v\n", inv.EmployeeEmail, err)
-				h.invitationService.MarkAsFailed(ctx, partnerID, inv.ID)
+			// Enviar email
+			if inv.EmployeeEmail != "" {
+				fmt.Printf("   📧 Enviando email para %s...\n", inv.EmployeeEmail)
+				err := h.emailService.SendInvitation(
+					inv.EmployeeEmail,
+					assignment.TemplateName,
+					inv.Token,
+					surveyURL,
+				)
+
+				if err != nil {
+					fmt.Printf("   ❌ Falha ao enviar email para %s: %v\n", inv.EmployeeEmail, err)
+				} else {
+					emailSuccess = true
+					fmt.Printf("   ✅ Email enviado para %s\n", inv.EmployeeEmail)
+				}
+			}
+
+			// Enviar WhatsApp (se WhatsApp estiver configurado)
+			if !h.whatsappService.IsConfigured() {
+				fmt.Printf("   ⚠️  WhatsApp não configurado - pulando\n")
+			} else if inv.EmployeeID <= 0 {
+				fmt.Printf("   ⚠️  EmployeeID inválido - pulando WhatsApp\n")
 			} else {
+				// Buscar employee para obter mobile
+				employee, err := h.employeeRepo.GetByID(ctx, partnerID, inv.EmployeeID)
+				if err != nil {
+					fmt.Printf("   ⚠️  Erro ao buscar employee: %v - pulando WhatsApp\n", err)
+				} else if employee.Mobile == "" {
+					fmt.Printf("   ⚠️  Employee %s não tem número de telefone - pulando WhatsApp\n", inv.EmployeeEmail)
+				} else {
+					fmt.Printf("   📱 Enviando WhatsApp para %s...\n", employee.Mobile)
+					err := h.whatsappService.SendInvitation(
+						employee.Mobile,
+						assignment.TemplateName,
+						inv.Token,
+						surveyURL,
+					)
+
+					if err != nil {
+						fmt.Printf("   ❌ Falha ao enviar WhatsApp para %s: %v\n", employee.Mobile, err)
+					} else {
+						whatsappSuccess = true
+						fmt.Printf("   ✅ WhatsApp enviado com sucesso para %s\n", employee.Mobile)
+					}
+				}
+			}
+
+			// Marcar como enviado se pelo menos um canal funcionou
+			if emailSuccess || whatsappSuccess {
 				sentCount++
-				fmt.Printf("   ✅ Enviado para %s\n", inv.EmployeeEmail)
 				h.invitationService.MarkAsSent(ctx, partnerID, inv.ID)
+			} else {
+				failedCount++
+				h.invitationService.MarkAsFailed(ctx, partnerID, inv.ID)
 			}
 		}
 
